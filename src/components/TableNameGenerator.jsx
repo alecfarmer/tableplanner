@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Sparkles, Key, X, Loader2, RefreshCw } from 'lucide-react';
-import { generateTableNames, getStoredApiKey, setStoredApiKey } from '../utils/aiTableNames';
+import { generateTableNames, getStoredApiKey, setStoredApiKey, getEffectiveApiKey, hasEnvApiKey } from '../utils/aiTableNames';
 import toast from 'react-hot-toast';
 
 export default function TableNameGenerator({ tables, onUpdateTable }) {
@@ -11,14 +11,16 @@ export default function TableNameGenerator({ tables, onUpdateTable }) {
   const [apiKey, setApiKey] = useState(getStoredApiKey);
   const [previewNames, setPreviewNames] = useState(null);
 
+  const envKeyAvailable = hasEnvApiKey();
+
   const handleGenerate = async () => {
     if (!theme.trim()) {
       toast.error('Enter a theme first');
       return;
     }
-    if (!apiKey.trim()) {
+    if (!envKeyAvailable && !apiKey.trim()) {
       setShowApiKey(true);
-      toast.error('An Anthropic API key is required');
+      toast.error('An Anthropic API key is required — set VITE_ANTHROPIC_API_KEY in .env or enter one below');
       return;
     }
 
@@ -121,32 +123,41 @@ export default function TableNameGenerator({ tables, onUpdateTable }) {
 
           {/* API Key */}
           <div>
-            <button
-              onClick={() => setShowApiKey(!showApiKey)}
-              className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 cursor-pointer"
-            >
-              <Key size={10} />
-              {getStoredApiKey() ? 'API key saved' : 'Set API key'}
-            </button>
-
-            {showApiKey && (
-              <div className="mt-2 space-y-2">
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-ant-..."
-                  className="input-field text-xs font-mono"
-                />
-                <div className="flex gap-2 items-center">
-                  <button onClick={handleSaveKey} className="btn-primary text-xs py-1 px-3">
-                    Save Key
-                  </button>
-                  <span className="text-[10px] text-gray-400">
-                    Stored locally in your browser only
-                  </span>
-                </div>
+            {envKeyAvailable ? (
+              <div className="flex items-center gap-1.5 text-xs text-sage-dark">
+                <Key size={10} />
+                <span>Using API key from environment variable</span>
               </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 cursor-pointer"
+                >
+                  <Key size={10} />
+                  {getStoredApiKey() ? 'API key saved' : 'Set API key'}
+                </button>
+
+                {showApiKey && (
+                  <div className="mt-2 space-y-2">
+                    <input
+                      type="password"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="sk-ant-..."
+                      className="input-field text-xs font-mono"
+                    />
+                    <div className="flex gap-2 items-center">
+                      <button onClick={handleSaveKey} className="btn-primary text-xs py-1 px-3">
+                        Save Key
+                      </button>
+                      <span className="text-[10px] text-gray-400">
+                        Or set VITE_ANTHROPIC_API_KEY in .env
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

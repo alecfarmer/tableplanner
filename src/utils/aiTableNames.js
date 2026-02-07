@@ -2,6 +2,19 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const API_KEY_STORAGE = 'wedding-planner-anthropic-key';
 
+/**
+ * Resolve the API key with priority:
+ * 1. VITE_ANTHROPIC_API_KEY environment variable
+ * 2. Manually stored key in localStorage
+ */
+export function getEffectiveApiKey() {
+  return import.meta.env.VITE_ANTHROPIC_API_KEY || localStorage.getItem(API_KEY_STORAGE) || '';
+}
+
+export function hasEnvApiKey() {
+  return !!import.meta.env.VITE_ANTHROPIC_API_KEY;
+}
+
 export function getStoredApiKey() {
   return localStorage.getItem(API_KEY_STORAGE) || '';
 }
@@ -16,14 +29,20 @@ export function setStoredApiKey(key) {
 
 /**
  * Generate creative table names using Claude API.
+ * Uses VITE_ANTHROPIC_API_KEY env var if set, otherwise falls back to the provided key.
  * @param {string} theme - The theme/topic for table names (e.g., "flowers", "Italian cities", "love songs")
  * @param {number} count - Number of names to generate
- * @param {string} apiKey - Anthropic API key
+ * @param {string} apiKey - Anthropic API key (fallback if env var not set)
  * @returns {Promise<string[]>} Array of generated table names
  */
 export async function generateTableNames(theme, count, apiKey) {
+  const effectiveKey = import.meta.env.VITE_ANTHROPIC_API_KEY || apiKey;
+  if (!effectiveKey) {
+    throw new Error('No API key available. Set VITE_ANTHROPIC_API_KEY in .env or enter one manually.');
+  }
+
   const client = new Anthropic({
-    apiKey,
+    apiKey: effectiveKey,
     dangerouslyAllowBrowser: true,
   });
 
