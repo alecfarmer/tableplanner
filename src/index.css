@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@theme {
+  --color-blush: #f5e6e0;
+  --color-blush-dark: #e8cfc6;
+  --color-sage: #b7c4a1;
+  --color-sage-dark: #97a880;
+  --color-cream: #fdf8f0;
+  --color-cream-dark: #f0e6d3;
+  --color-gold: #c9a84c;
+  --color-gold-dark: #b08d2e;
+  --color-wine: #722f37;
+  --color-wine-light: #8b3a43;
+  --font-serif: 'Playfair Display', 'Georgia', serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-cream text-gray-800 font-sans m-0;
+    min-height: 100vh;
+  }
+
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-sage hover:bg-sage-dark text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 cursor-pointer;
+  }
+
+  .btn-secondary {
+    @apply bg-blush hover:bg-blush-dark text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200 cursor-pointer;
+  }
+
+  .btn-gold {
+    @apply bg-gold hover:bg-gold-dark text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 cursor-pointer;
+  }
+
+  .btn-wine {
+    @apply bg-wine hover:bg-wine-light text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 cursor-pointer;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-4;
+  }
+
+  .input-field {
+    @apply w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage/50 focus:border-sage bg-white text-gray-800 text-sm;
+  }
+
+  .guest-card {
+    @apply bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow;
+  }
+
+  .guest-card-dragging {
+    @apply opacity-50 shadow-lg ring-2 ring-sage;
+  }
+
+  .drop-target-active {
+    @apply ring-2 ring-gold ring-offset-2 bg-gold/10;
+  }
+
+  .seat-empty {
+    @apply border-2 border-dashed border-gray-300 bg-white/80 hover:border-sage hover:bg-sage/5 transition-colors;
+  }
+
+  .seat-occupied {
+    @apply border-2 border-sage bg-sage/10 text-gray-800;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+}
