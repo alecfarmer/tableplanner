@@ -1,4 +1,8 @@
-export default function PrintView({ tables, guests }) {
+export default function PrintView({ tables, guests, groups = [] }) {
+  const groupMap = {};
+  for (const g of groups) {
+    groupMap[g.id] = g;
+  }
   const assignedByTable = {};
   for (const guest of guests) {
     if (guest.tableId) {
@@ -34,6 +38,14 @@ export default function PrintView({ tables, guests }) {
                   {tableGuests.map((g) => (
                     <li key={g.id}>
                       {g.name}
+                      {g.groupId && groupMap[g.groupId] && (
+                        <span
+                          className="text-xs ml-1 px-1 rounded"
+                          style={{ backgroundColor: groupMap[g.groupId].color + '30' }}
+                        >
+                          {groupMap[g.groupId].name}
+                        </span>
+                      )}
                       {g.dietary && (
                         <span className="text-gold text-xs ml-1">({g.dietary})</span>
                       )}

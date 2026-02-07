@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 
 const STORAGE_KEY = 'wedding-seating-planner';
 
-export function useSeatingPersistence(guests, tables, setGuests, setTables) {
+export function useSeatingPersistence(guests, tables, groups, setGuests, setTables, setGroups) {
   const initialized = useRef(false);
 
   // Load from localStorage on mount
@@ -20,11 +20,14 @@ export function useSeatingPersistence(guests, tables, setGuests, setTables) {
         if (data.tables && Array.isArray(data.tables)) {
           setTables(data.tables);
         }
+        if (data.groups && Array.isArray(data.groups)) {
+          setGroups(data.groups);
+        }
       }
     } catch {
       // Ignore corrupted data
     }
-  }, [setGuests, setTables]);
+  }, [setGuests, setTables, setGroups]);
 
   // Auto-save on changes (debounced)
   useEffect(() => {
@@ -34,7 +37,7 @@ export function useSeatingPersistence(guests, tables, setGuests, setTables) {
       try {
         localStorage.setItem(
           STORAGE_KEY,
-          JSON.stringify({ guests, tables, savedAt: new Date().toISOString() })
+          JSON.stringify({ guests, tables, groups, savedAt: new Date().toISOString() })
         );
       } catch {
         // Storage might be full
@@ -42,7 +45,7 @@ export function useSeatingPersistence(guests, tables, setGuests, setTables) {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [guests, tables]);
+  }, [guests, tables, groups]);
 }
 
 export function clearPersistedData() {

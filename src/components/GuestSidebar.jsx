@@ -1,30 +1,52 @@
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { Search, Users, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, Users, ChevronDown, ChevronRight, List, Layers } from 'lucide-react';
 import GuestCard from './GuestCard';
 import GuestForm from './GuestForm';
 import CSVUploader from './CSVUploader';
+import GroupManager from './GroupManager';
 
 export default function GuestSidebar({
   guests,
   unassigned,
   assigned,
   tables,
+  groups,
   onAddGuest,
   onAddGuests,
   onRemoveGuest,
+  onAddGroup,
+  onRemoveGroup,
+  onUpdateGroup,
+  onAutoGroup,
+  onSetGuestGroup,
+  onClearGuestGroups,
+  groupColors,
 }) {
   const [search, setSearch] = useState('');
   const [assignedCollapsed, setAssignedCollapsed] = useState(false);
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'groups'
+  const [filterGroupId, setFilterGroupId] = useState(null);
 
   const { setNodeRef, isOver } = useDroppable({
     id: 'sidebar-unassigned',
     data: { type: 'sidebar' },
   });
 
-  const filteredUnassigned = unassigned.filter((g) =>
+  const groupMap = {};
+  for (const g of groups) {
+    groupMap[g.id] = g;
+  }
+
+  const matchesSearch = (g) =>
     g.name.toLowerCase().includes(search.toLowerCase()) ||
-    g.party.toLowerCase().includes(search.toLowerCase())
+    g.party.toLowerCase().includes(search.toLowerCase());
+
+  const matchesGroupFilter = (g) =>
+    !filterGroupId || g.groupId === filterGroupId;
+
+  const filteredUnassigned = unassigned.filter(
+    (g) => matchesSearch(g) && matchesGroupFilter(g)
   );
 
   const assignedByTable = {};
@@ -33,6 +55,20 @@ export default function GuestSidebar({
       assignedByTable[guest.tableId] = [];
     }
     assignedByTable[guest.tableId].push(guest);
+  }
+
+  // Group unassigned guests by groupId for group view
+  const unassignedByGroup = {};
+  const unassignedUngrouped = [];
+  for (const guest of filteredUnassigned) {
+    if (guest.groupId) {
+      if (!unassignedByGroup[guest.groupId]) {
+        unassignedByGroup[guest.groupId] = [];
+      }
+      unassignedByGroup[guest.groupId].push(guest);
+    } else {
+      unassignedUngrouped.push(guest);
+    }
   }
 
   return (
@@ -57,8 +93,8 @@ export default function GuestSidebar({
         </div>
       </div>
 
-      {/* Search */}
-      <div className="px-4 pt-3">
+      {/* Search + View Toggle */}
+      <div className="px-4 pt-3 space-y-2">
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -69,6 +105,52 @@ export default function GuestSidebar({
             className="input-field pl-9"
           />
         </div>
+
+        <div className="flex items-center gap-1">
+          <div className="flex bg-gray-100 rounded-lg p-0.5">
+            <button
+              onClick={() => { setViewMode('list'); setFilterGroupId(null); }}
+              className={`text-xs px-2 py-1 rounded-md flex items-center gap-1 cursor-pointer transition-colors ${
+                viewMode === 'list' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <List size={12} />
+              All
+            </button>
+            <button
+              onClick={() => setViewMode('groups')}
+              className={`text-xs px-2 py-1 rounded-md flex items-center gap-1 cursor-pointer transition-colors ${
+                viewMode === 'groups' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Layers size={12} />
+              By Group
+            </button>
+          </div>
+
+          {/* Group filter chips */}
+          {viewMode === 'list' && groups.length > 0 && (
+            <div className="flex gap-1 overflow-x-auto flex-1 ml-1">
+              {groups.map((group) => (
+                <button
+                  key={group.id}
+                  onClick={() =>
+                    setFilterGroupId(filterGroupId === group.id ? null : group.id)
+                  }
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap cursor-pointer border transition-colors ${
+                    filterGroupId === group.id
+                      ? 'border-gray-400 font-medium'
+                      : 'border-transparent opacity-70 hover:opacity-100'
+                  }`}
+                  style={{ backgroundColor: group.color + '40', color: '#555' }}
+                  title={group.name}
+                >
+                  {group.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Guest Form & CSV */}
@@ -76,6 +158,19 @@ export default function GuestSidebar({
         <GuestForm onAddGuest={onAddGuest} onAddGuests={onAddGuests} />
         <CSVUploader onGuestsLoaded={onAddGuests} />
       </div>
+
+      {/* Group Manager */}
+      <GroupManager
+        groups={groups}
+        guests={guests}
+        onAddGroup={onAddGroup}
+        onRemoveGroup={onRemoveGroup}
+        onUpdateGroup={onUpdateGroup}
+        onAutoGroup={onAutoGroup}
+        onSetGuestGroup={onSetGuestGroup}
+        onClearGuestGroups={onClearGuestGroups}
+        groupColors={groupColors}
+      />
 
       {/* Guest Lists */}
       <div className="flex-1 overflow-y-auto">
@@ -105,15 +200,64 @@ export default function GuestSidebar({
             </p>
           )}
 
-          <div className="space-y-1.5">
-            {filteredUnassigned.map((guest) => (
-              <GuestCard
-                key={guest.id}
-                guest={guest}
-                onRemove={onRemoveGuest}
-              />
-            ))}
-          </div>
+          {viewMode === 'groups' ? (
+            <div className="space-y-3">
+              {/* Grouped guests */}
+              {groups
+                .filter((group) => unassignedByGroup[group.id]?.length > 0)
+                .map((group) => (
+                  <div key={group.id}>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: group.color }}
+                      />
+                      <span className="text-xs font-medium text-gray-600">
+                        {group.name} ({unassignedByGroup[group.id].length})
+                      </span>
+                    </div>
+                    <div className="space-y-1 ml-4">
+                      {unassignedByGroup[group.id].map((guest) => (
+                        <GuestCard
+                          key={guest.id}
+                          guest={guest}
+                          group={groupMap[guest.groupId]}
+                          onRemove={onRemoveGuest}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              {/* Ungrouped guests */}
+              {unassignedUngrouped.length > 0 && (
+                <div>
+                  <span className="text-xs font-medium text-gray-400 mb-1 block">
+                    Ungrouped ({unassignedUngrouped.length})
+                  </span>
+                  <div className="space-y-1">
+                    {unassignedUngrouped.map((guest) => (
+                      <GuestCard
+                        key={guest.id}
+                        guest={guest}
+                        onRemove={onRemoveGuest}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {filteredUnassigned.map((guest) => (
+                <GuestCard
+                  key={guest.id}
+                  guest={guest}
+                  group={groupMap[guest.groupId]}
+                  onRemove={onRemoveGuest}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Assigned */}
@@ -146,6 +290,7 @@ export default function GuestSidebar({
                         <GuestCard
                           key={guest.id}
                           guest={guest}
+                          group={groupMap[guest.groupId]}
                           compact
                         />
                       ))}

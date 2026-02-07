@@ -14,6 +14,7 @@ export function useGuests(initialGuests = INITIAL_GUESTS) {
         party: guest.party || '',
         dietary: guest.dietary || '',
         notes: guest.notes || '',
+        groupId: guest.groupId || null,
         tableId: null,
         seatIndex: null,
       },
@@ -73,6 +74,25 @@ export function useGuests(initialGuests = INITIAL_GUESTS) {
     );
   }, []);
 
+  const setGuestGroup = useCallback((guestId, groupId) => {
+    setGuests((prev) =>
+      prev.map((g) => (g.id === guestId ? { ...g, groupId } : g))
+    );
+  }, []);
+
+  const setGuestsGroup = useCallback((guestIds, groupId) => {
+    const idSet = new Set(guestIds);
+    setGuests((prev) =>
+      prev.map((g) => (idSet.has(g.id) ? { ...g, groupId } : g))
+    );
+  }, []);
+
+  const clearGuestGroups = useCallback((groupId) => {
+    setGuests((prev) =>
+      prev.map((g) => (g.groupId === groupId ? { ...g, groupId: null } : g))
+    );
+  }, []);
+
   const unassigned = guests.filter((g) => !g.tableId);
   const assigned = guests.filter((g) => g.tableId);
 
@@ -87,6 +107,9 @@ export function useGuests(initialGuests = INITIAL_GUESTS) {
     unassignGuest,
     swapGuests,
     clearAllAssignments,
+    setGuestGroup,
+    setGuestsGroup,
+    clearGuestGroups,
     unassigned,
     assigned,
   };

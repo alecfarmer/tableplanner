@@ -11,6 +11,7 @@ import ExportImport from './components/ExportImport';
 import PrintView from './components/PrintView';
 import { useGuests } from './hooks/useGuests';
 import { useTables } from './hooks/useTables';
+import { useGroups } from './hooks/useGroups';
 import { useSeatingPersistence } from './hooks/useSeatingPersistence';
 
 export default function App() {
@@ -24,6 +25,8 @@ export default function App() {
     unassignGuest,
     swapGuests,
     clearAllAssignments,
+    setGuestGroup,
+    clearGuestGroups,
     unassigned,
     assigned,
   } = useGuests();
@@ -37,7 +40,17 @@ export default function App() {
     moveTable,
   } = useTables();
 
-  useSeatingPersistence(guests, tables, setGuests, setTables);
+  const {
+    groups,
+    setGroups,
+    addGroup,
+    removeGroup,
+    updateGroup,
+    autoGroupByLastName,
+    GROUP_COLORS,
+  } = useGroups();
+
+  useSeatingPersistence(guests, tables, groups, setGuests, setTables, setGroups);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -85,8 +98,24 @@ export default function App() {
     (data) => {
       setGuests(data.guests);
       setTables(data.tables);
+      if (data.groups) {
+        setGroups(data.groups);
+      }
     },
-    [setGuests, setTables]
+    [setGuests, setTables, setGroups]
+  );
+
+  const handleAutoGroup = useCallback(
+    (guestList) => {
+      const result = autoGroupByLastName(guestList);
+      if (Object.keys(result.guestGroupAssignments).length > 0) {
+        for (const [guestId, groupId] of Object.entries(result.guestGroupAssignments)) {
+          setGuestGroup(guestId, groupId);
+        }
+      }
+      return result;
+    },
+    [autoGroupByLastName, setGuestGroup]
   );
 
   const handleDragEnd = useCallback(
@@ -158,6 +187,7 @@ export default function App() {
             <ExportImport
               guests={guests}
               tables={tables}
+              groups={groups}
               onImport={handleImport}
             />
           </header>
@@ -178,9 +208,17 @@ export default function App() {
               unassigned={unassigned}
               assigned={assigned}
               tables={tables}
+              groups={groups}
               onAddGuest={handleAddGuest}
               onAddGuests={handleAddGuests}
               onRemoveGuest={handleRemoveGuest}
+              onAddGroup={addGroup}
+              onRemoveGroup={removeGroup}
+              onUpdateGroup={updateGroup}
+              onAutoGroup={handleAutoGroup}
+              onSetGuestGroup={setGuestGroup}
+              onClearGuestGroups={clearGuestGroups}
+              groupColors={GROUP_COLORS}
             />
             <TableCanvas
               tables={tables}
@@ -195,7 +233,7 @@ export default function App() {
         <DragOverlay dropAnimation={null} />
       </DndContext>
 
-      <PrintView tables={tables} guests={guests} />
+      <PrintView tables={tables} guests={guests} groups={groups} />
     </>
   );
 }

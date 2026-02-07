@@ -18,6 +18,7 @@ export function parseCSV(file) {
             party: (row.party || row.group || row['party name'] || '').trim(),
             dietary: (row.dietary || row['dietary restrictions'] || row.diet || '').trim(),
             notes: (row.notes || row.note || row.comments || '').trim(),
+            groupId: null,
             tableId: null,
             seatIndex: null,
           }));
@@ -41,6 +42,7 @@ export function parseBulkText(text) {
       party: '',
       dietary: '',
       notes: '',
+      groupId: null,
       tableId: null,
       seatIndex: null,
     }));

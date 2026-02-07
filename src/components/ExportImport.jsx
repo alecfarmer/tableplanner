@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 export default function ExportImport({
   guests,
   tables,
+  groups,
   onImport,
 }) {
   const fileInputRef = useRef(null);
@@ -14,6 +15,7 @@ export default function ExportImport({
     exportToJSON({
       guests,
       tables,
+      groups,
       exportedAt: new Date().toISOString(),
     });
     toast.success('Seating arrangement exported');
