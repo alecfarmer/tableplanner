@@ -22,6 +22,7 @@ export default function GroupManager({
   onAutoGroup,
   onSetGuestGroup,
   onClearGuestGroups,
+  onClearAllGroups,
   groupColors,
 }) {
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -95,7 +96,7 @@ export default function GroupManager({
       {expanded && (
         <div className="px-4 pb-3 space-y-2">
           {/* Action buttons */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setShowCreateForm(!showCreateForm)}
               className="btn-primary text-xs py-1 px-2 flex items-center gap-1"
@@ -109,8 +110,20 @@ export default function GroupManager({
               title="Automatically group guests who share the same last name"
             >
               <Wand2 size={12} />
-              Auto-Group by Last Name
+              Auto-Group
             </button>
+            {groups.length > 0 && (
+              <button
+                onClick={() => {
+                  onClearAllGroups();
+                  toast.success('All groups removed');
+                }}
+                className="text-xs py-1 px-2 flex items-center gap-1 text-gray-500 hover:text-red-500 cursor-pointer transition-colors"
+              >
+                <Trash2 size={12} />
+                Remove All
+              </button>
+            )}
           </div>
 
           {/* Create form */}

@@ -1,11 +1,15 @@
-import { Plus, RotateCcw } from 'lucide-react';
+import { Plus, RotateCcw, Zap } from 'lucide-react';
+import TableNameGenerator from './TableNameGenerator';
 
 export default function TableConfig({
   tables,
   onAddTable,
+  onUpdateTable,
   onClearAssignments,
+  onAutoSeat,
   guestCount,
   assignedCount,
+  unassignedCount,
 }) {
   return (
     <div className="flex items-center gap-3 px-4 py-2 bg-white border-b border-gray-200 no-print flex-wrap">
@@ -24,6 +28,22 @@ export default function TableConfig({
           <Plus size={14} />
           Rectangular
         </button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <TableNameGenerator
+          tables={tables}
+          onUpdateTable={onUpdateTable}
+        />
+        {unassignedCount > 0 && tables.length > 0 && (
+          <button
+            onClick={onAutoSeat}
+            className="btn-wine flex items-center gap-1 text-sm py-1.5"
+          >
+            <Zap size={14} />
+            Auto-Seat
+          </button>
+        )}
       </div>
 
       <div className="text-sm text-gray-500 flex-1">

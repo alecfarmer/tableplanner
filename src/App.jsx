@@ -13,6 +13,7 @@ import { useGuests } from './hooks/useGuests';
 import { useTables } from './hooks/useTables';
 import { useGroups } from './hooks/useGroups';
 import { useSeatingPersistence } from './hooks/useSeatingPersistence';
+import { computeAutoSeat } from './utils/autoSeat';
 
 export default function App() {
   const {
@@ -46,6 +47,7 @@ export default function App() {
     addGroup,
     removeGroup,
     updateGroup,
+    clearAllGroups,
     autoGroupByLastName,
     GROUP_COLORS,
   } = useGroups();
@@ -117,6 +119,28 @@ export default function App() {
     },
     [autoGroupByLastName, setGuestGroup]
   );
+
+  const handleAutoSeat = useCallback(() => {
+    const assignments = computeAutoSeat(guests, tables, groups);
+    if (assignments.length === 0) {
+      toast('No guests to seat or no available seats');
+      return;
+    }
+    for (const { guestId, tableId, seatIndex } of assignments) {
+      assignGuest(guestId, tableId, seatIndex);
+    }
+    toast.success(`Auto-seated ${assignments.length} guests (groups kept together)`);
+  }, [guests, tables, groups, assignGuest]);
+
+  const handleClearAllGroups = useCallback(() => {
+    // Remove groupId from all guests first
+    for (const guest of guests) {
+      if (guest.groupId) {
+        setGuestGroup(guest.id, null);
+      }
+    }
+    clearAllGroups();
+  }, [guests, setGuestGroup, clearAllGroups]);
 
   const handleDragEnd = useCallback(
     (event) => {
@@ -196,9 +220,12 @@ export default function App() {
           <TableConfig
             tables={tables}
             onAddTable={addTable}
+            onUpdateTable={updateTable}
             onClearAssignments={clearAllAssignments}
+            onAutoSeat={handleAutoSeat}
             guestCount={guests.length}
             assignedCount={assigned.length}
+            unassignedCount={unassigned.length}
           />
 
           {/* Main Content */}
@@ -218,6 +245,7 @@ export default function App() {
               onAutoGroup={handleAutoGroup}
               onSetGuestGroup={setGuestGroup}
               onClearGuestGroups={clearGuestGroups}
+              onClearAllGroups={handleClearAllGroups}
               groupColors={GROUP_COLORS}
             />
             <TableCanvas

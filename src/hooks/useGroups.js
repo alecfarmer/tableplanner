@@ -93,12 +93,17 @@ export function useGroups(initialGroups = []) {
     return { newGroups, guestGroupAssignments };
   }, []);
 
+  const clearAllGroups = useCallback(() => {
+    setGroups([]);
+  }, []);
+
   return {
     groups,
     setGroups,
     addGroup,
     removeGroup,
     updateGroup,
+    clearAllGroups,
     autoGroupByLastName,
     GROUP_COLORS,
   };

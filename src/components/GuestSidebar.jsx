@@ -21,6 +21,7 @@ export default function GuestSidebar({
   onAutoGroup,
   onSetGuestGroup,
   onClearGuestGroups,
+  onClearAllGroups,
   groupColors,
 }) {
   const [search, setSearch] = useState('');
@@ -169,6 +170,7 @@ export default function GuestSidebar({
         onAutoGroup={onAutoGroup}
         onSetGuestGroup={onSetGuestGroup}
         onClearGuestGroups={onClearGuestGroups}
+        onClearAllGroups={onClearAllGroups}
         groupColors={groupColors}
       />
 
