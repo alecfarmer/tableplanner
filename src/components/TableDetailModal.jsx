@@ -1,9 +1,15 @@
 import { useState } from 'react';
-import { X, Utensils, ArrowRightLeft, UserMinus, ChevronDown } from 'lucide-react';
+import { X, Utensils, ArrowRightLeft, UserMinus, ChevronDown, Heart } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 function getSeatPositions(shape, seats, width, height) {
   const positions = [];
+  if (shape === 'sweetheart') {
+    const cy = height / 2;
+    positions.push({ x: width * 0.3, y: cy });
+    positions.push({ x: width * 0.7, y: cy });
+    return positions;
+  }
   if (shape === 'round') {
     const cx = width / 2;
     const cy = height / 2;
@@ -46,11 +52,13 @@ export default function TableDetailModal({
 
   if (!table) return null;
 
-  const width = table.shape === 'round' ? 400 : 500;
-  const height = table.shape === 'round' ? 400 : 360;
+  const isSweetheart = table.shape === 'sweetheart';
+  const effectiveSeats = isSweetheart ? 2 : table.seats;
+  const width = isSweetheart ? 400 : table.shape === 'round' ? 400 : 500;
+  const height = isSweetheart ? 240 : table.shape === 'round' ? 400 : 360;
   const seatSize = 70;
 
-  const seatPositions = getSeatPositions(table.shape, table.seats, width, height);
+  const seatPositions = getSeatPositions(table.shape, effectiveSeats, width, height);
 
   // Build guest map for this table
   const guestMap = {};
@@ -117,10 +125,13 @@ export default function TableDetailModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h2 className="font-serif text-xl font-semibold text-wine">{table.label}</h2>
+            <h2 className="font-serif text-xl font-semibold text-wine flex items-center gap-2">
+              {isSweetheart && <Heart size={18} className="text-gold" fill="#c9a84c" />}
+              {table.label}
+            </h2>
             <p className="text-sm text-gray-500">
-              {table.shape === 'round' ? 'Round' : 'Rectangular'} &middot;
-              {assignedCount}/{table.seats} seats filled
+              {isSweetheart ? 'Sweetheart' : table.shape === 'round' ? 'Round' : 'Rectangular'} &middot;{' '}
+              {assignedCount}/{effectiveSeats} seats filled
             </p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 cursor-pointer p-1">
@@ -143,7 +154,21 @@ export default function TableDetailModal({
         <div className="flex justify-center py-6 px-4">
           <div className="relative" style={{ width, height }}>
             {/* Table surface */}
-            {table.shape === 'round' ? (
+            {isSweetheart ? (
+              <div className="absolute border-2 rounded-full flex items-center justify-center"
+                style={{
+                  left: 40, top: 30, right: 40, bottom: 30,
+                  background: 'linear-gradient(135deg, rgba(201,168,76,0.15), rgba(245,230,224,0.5))',
+                  borderColor: '#c9a84c',
+                }}
+              >
+                <div className="text-center">
+                  <Heart size={16} className="text-gold mx-auto mb-1" fill="#c9a84c" />
+                  <p className="font-serif text-sm font-semibold text-gold-dark">{table.label}</p>
+                  <p className="text-[11px] text-gray-500">{assignedCount}/2</p>
+                </div>
+              </div>
+            ) : table.shape === 'round' ? (
               <div className="absolute bg-blush/30 border-2 border-blush-dark rounded-full flex items-center justify-center"
                 style={{ left: 50, top: 50, right: 50, bottom: 50 }}
               >

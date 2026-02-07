@@ -15,6 +15,7 @@ import { useTables } from './hooks/useTables';
 import { useGroups } from './hooks/useGroups';
 import { useSeatingPersistence } from './hooks/useSeatingPersistence';
 import { computeAutoSeat } from './utils/autoSeat';
+import { computeAutoLayout } from './utils/autoLayout';
 
 export default function App() {
   const {
@@ -139,6 +140,14 @@ export default function App() {
     toast.success(`Auto-seated ${assignments.length} guests (groups kept together)`);
   }, [guests, tables, groups, assignGuest]);
 
+  const handleAutoLayout = useCallback((preset) => {
+    const positions = computeAutoLayout(preset, tables);
+    for (const [tableId, pos] of Object.entries(positions)) {
+      moveTable(tableId, pos.x, pos.y);
+    }
+    toast.success(`Applied ${preset} layout`);
+  }, [tables, moveTable]);
+
   const handleClearAllGroups = useCallback(() => {
     // Remove groupId from all guests first
     for (const guest of guests) {
@@ -230,6 +239,7 @@ export default function App() {
             onUpdateTable={updateTable}
             onClearAssignments={clearAllAssignments}
             onAutoSeat={handleAutoSeat}
+            onAutoLayout={handleAutoLayout}
             guestCount={guests.length}
             assignedCount={assigned.length}
             unassignedCount={unassigned.length}

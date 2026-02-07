@@ -1,9 +1,16 @@
 import { useState } from 'react';
-import { Edit3, Check, Trash2, Settings } from 'lucide-react';
+import { Edit3, Check, Trash2, Settings, Heart } from 'lucide-react';
 import Seat from './Seat';
 
-function getSeatPositions(shape, seats, width, height) {
+export function getSeatPositions(shape, seats, width, height) {
   const positions = [];
+
+  if (shape === 'sweetheart') {
+    const centerY = height / 2;
+    positions.push({ x: width * 0.3, y: centerY });
+    positions.push({ x: width * 0.7, y: centerY });
+    return positions;
+  }
 
   if (shape === 'round') {
     const centerX = width / 2;
@@ -18,7 +25,6 @@ function getSeatPositions(shape, seats, width, height) {
       });
     }
   } else {
-    // Rectangular: distribute seats along edges
     const padding = 30;
     const innerW = width - padding * 2;
     const innerH = height - padding * 2;
@@ -50,6 +56,12 @@ function getSeatPositions(shape, seats, width, height) {
   return positions;
 }
 
+function getTableDimensions(shape) {
+  if (shape === 'sweetheart') return { width: 260, height: 140 };
+  if (shape === 'round') return { width: 200, height: 200 };
+  return { width: 260, height: 180 };
+}
+
 export default function TableShape({
   table,
   guests,
@@ -60,10 +72,11 @@ export default function TableShape({
   const [label, setLabel] = useState(table.label);
   const [showSettings, setShowSettings] = useState(false);
 
-  const width = table.shape === 'round' ? 200 : 260;
-  const height = table.shape === 'round' ? 200 : 180;
+  const isSweetheart = table.shape === 'sweetheart';
+  const { width, height } = getTableDimensions(table.shape);
+  const effectiveSeats = isSweetheart ? 2 : table.seats;
 
-  const seatPositions = getSeatPositions(table.shape, table.seats, width, height);
+  const seatPositions = getSeatPositions(table.shape, effectiveSeats, width, height);
 
   const guestMap = {};
   for (const g of guests) {
@@ -79,77 +92,64 @@ export default function TableShape({
 
   const assignedCount = Object.keys(guestMap).length;
 
+  const labelBlock = editing ? (
+    <div className="flex items-center gap-1">
+      <input
+        type="text"
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleLabelSave()}
+        className="text-xs bg-white border border-gray-300 rounded px-1 py-0.5 w-20 text-center"
+        autoFocus
+      />
+      <button
+        onClick={handleLabelSave}
+        className="text-sage hover:text-sage-dark cursor-pointer"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <Check size={12} />
+      </button>
+    </div>
+  ) : (
+    <button
+      onClick={() => setEditing(true)}
+      onPointerDown={(e) => e.stopPropagation()}
+      className={`text-xs font-serif font-semibold flex items-center gap-1 hover:opacity-70 cursor-pointer ${
+        isSweetheart ? 'text-gold-dark' : 'text-wine'
+      }`}
+    >
+      {table.label}
+      <Edit3 size={10} />
+    </button>
+  );
+
   return (
     <div className="relative" style={{ width, height }}>
       {/* Table surface */}
-      {table.shape === 'round' ? (
+      {isSweetheart ? (
         <div
-          className="absolute inset-8 bg-blush/40 border-2 border-blush-dark rounded-full flex flex-col items-center justify-center"
+          className="absolute inset-4 border-2 rounded-full flex flex-col items-center justify-center"
+          style={{
+            background: 'linear-gradient(135deg, rgba(201,168,76,0.15), rgba(245,230,224,0.5))',
+            borderColor: '#c9a84c',
+          }}
         >
-          {editing ? (
-            <div className="flex items-center gap-1">
-              <input
-                type="text"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleLabelSave()}
-                className="text-xs bg-white border border-gray-300 rounded px-1 py-0.5 w-20 text-center"
-                autoFocus
-              />
-              <button
-                onClick={handleLabelSave}
-                className="text-sage hover:text-sage-dark cursor-pointer"
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                <Check size={12} />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setEditing(true)}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="text-xs font-serif font-semibold text-wine flex items-center gap-1 hover:opacity-70 cursor-pointer"
-            >
-              {table.label}
-              <Edit3 size={10} />
-            </button>
-          )}
+          <Heart size={12} className="text-gold mb-0.5" fill="#c9a84c" />
+          {labelBlock}
+          <span className="text-[10px] text-gray-500 mt-0.5">
+            {assignedCount}/2
+          </span>
+        </div>
+      ) : table.shape === 'round' ? (
+        <div className="absolute inset-8 bg-blush/40 border-2 border-blush-dark rounded-full flex flex-col items-center justify-center">
+          {labelBlock}
           <span className="text-[10px] text-gray-500 mt-0.5">
             {assignedCount}/{table.seats}
           </span>
         </div>
       ) : (
-        <div
-          className="absolute inset-6 bg-blush/40 border-2 border-blush-dark rounded-lg flex flex-col items-center justify-center"
-        >
-          {editing ? (
-            <div className="flex items-center gap-1">
-              <input
-                type="text"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleLabelSave()}
-                className="text-xs bg-white border border-gray-300 rounded px-1 py-0.5 w-20 text-center"
-                autoFocus
-              />
-              <button
-                onClick={handleLabelSave}
-                className="text-sage hover:text-sage-dark cursor-pointer"
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                <Check size={12} />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setEditing(true)}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="text-xs font-serif font-semibold text-wine flex items-center gap-1 hover:opacity-70 cursor-pointer"
-            >
-              {table.label}
-              <Edit3 size={10} />
-            </button>
-          )}
+        <div className="absolute inset-6 bg-blush/40 border-2 border-blush-dark rounded-lg flex flex-col items-center justify-center">
+          {labelBlock}
           <span className="text-[10px] text-gray-500 mt-0.5">
             {assignedCount}/{table.seats}
           </span>
@@ -158,13 +158,15 @@ export default function TableShape({
 
       {/* Table controls */}
       <div className="absolute -top-3 -right-3 flex gap-1 z-10">
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          onPointerDown={(e) => e.stopPropagation()}
-          className="bg-white shadow-sm border border-gray-200 rounded-full p-1 hover:bg-gray-50 text-gray-500 cursor-pointer"
-        >
-          <Settings size={12} />
-        </button>
+        {!isSweetheart && (
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="bg-white shadow-sm border border-gray-200 rounded-full p-1 hover:bg-gray-50 text-gray-500 cursor-pointer"
+          >
+            <Settings size={12} />
+          </button>
+        )}
         <button
           onClick={() => onRemoveTable(table.id)}
           onPointerDown={(e) => e.stopPropagation()}
@@ -174,8 +176,8 @@ export default function TableShape({
         </button>
       </div>
 
-      {/* Settings popup */}
-      {showSettings && (
+      {/* Settings popup (not for sweetheart) */}
+      {showSettings && !isSweetheart && (
         <div
           className="absolute -top-2 right-10 z-20 bg-white shadow-lg rounded-lg border border-gray-200 p-3 w-48"
           onPointerDown={(e) => e.stopPropagation()}

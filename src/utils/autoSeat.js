@@ -14,6 +14,9 @@ export function computeAutoSeat(guests, tables, groups) {
   const unassigned = guests.filter((g) => !g.tableId);
   if (unassigned.length === 0 || tables.length === 0) return [];
 
+  // Exclude sweetheart tables from auto-seating (bride/groom are placed manually)
+  tables = tables.filter((t) => t.shape !== 'sweetheart');
+
   // Build a map of occupied seats per table
   const occupied = {};
   for (const table of tables) {
