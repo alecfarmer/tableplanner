@@ -1,17 +1,31 @@
 import { useState } from 'react';
-import { Sparkles, Key, X, Loader2, RefreshCw } from 'lucide-react';
-import { generateTableNames, getStoredApiKey, setStoredApiKey, getEffectiveApiKey, hasEnvApiKey } from '../utils/aiTableNames';
+import { Sparkles, Key, X, Loader2, RefreshCw, Settings } from 'lucide-react';
+import {
+  generateTableNames,
+  getStoredApiKey,
+  setStoredApiKey,
+  getStoredBaseUrl,
+  setStoredBaseUrl,
+  getStoredModel,
+  setStoredModel,
+  getEffectiveModel,
+  hasEnvApiKey,
+  hasEnvBaseUrl,
+} from '../utils/aiTableNames';
 import toast from 'react-hot-toast';
 
 export default function TableNameGenerator({ tables, onUpdateTable }) {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showApiKey, setShowApiKey] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [apiKey, setApiKey] = useState(getStoredApiKey);
+  const [baseUrl, setBaseUrl] = useState(getStoredBaseUrl);
+  const [model, setModel] = useState(getStoredModel);
   const [previewNames, setPreviewNames] = useState(null);
 
   const envKeyAvailable = hasEnvApiKey();
+  const envBaseUrlAvailable = hasEnvBaseUrl();
 
   const handleGenerate = async () => {
     if (!theme.trim()) {
@@ -19,8 +33,8 @@ export default function TableNameGenerator({ tables, onUpdateTable }) {
       return;
     }
     if (!envKeyAvailable && !apiKey.trim()) {
-      setShowApiKey(true);
-      toast.error('An Anthropic API key is required — set VITE_ANTHROPIC_API_KEY in .env or enter one below');
+      setShowSettings(true);
+      toast.error('An API key is required — set VITE_OPENAI_API_KEY in .env or enter one below');
       return;
     }
 
@@ -28,14 +42,19 @@ export default function TableNameGenerator({ tables, onUpdateTable }) {
     setPreviewNames(null);
 
     try {
-      const names = await generateTableNames(theme.trim(), tables.length, apiKey.trim());
+      const overrides = {};
+      if (apiKey.trim()) overrides.apiKey = apiKey.trim();
+      if (baseUrl.trim()) overrides.baseUrl = baseUrl.trim();
+      if (model.trim()) overrides.model = model.trim();
+
+      const names = await generateTableNames(theme.trim(), tables.length, overrides);
       setPreviewNames(names);
       toast.success(`Generated ${names.length} table names`);
     } catch (err) {
       const msg = err.message || 'Failed to generate names';
-      if (msg.includes('401') || msg.includes('authentication') || msg.includes('api_key')) {
+      if (msg.includes('401') || msg.includes('authentication') || msg.includes('api_key') || msg.includes('Incorrect API')) {
         toast.error('Invalid API key. Please check and try again.');
-        setShowApiKey(true);
+        setShowSettings(true);
       } else {
         toast.error(msg);
       }
@@ -54,10 +73,12 @@ export default function TableNameGenerator({ tables, onUpdateTable }) {
     setOpen(false);
   };
 
-  const handleSaveKey = () => {
+  const handleSaveSettings = () => {
     setStoredApiKey(apiKey.trim());
-    setShowApiKey(false);
-    toast.success('API key saved');
+    setStoredBaseUrl(baseUrl.trim());
+    setStoredModel(model.trim());
+    setShowSettings(false);
+    toast.success('AI settings saved');
   };
 
   if (!open) {
@@ -75,7 +96,7 @@ export default function TableNameGenerator({ tables, onUpdateTable }) {
 
   return (
     <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-serif text-lg font-semibold text-wine flex items-center gap-2">
             <Sparkles size={18} className="text-gold" />
@@ -91,10 +112,11 @@ export default function TableNameGenerator({ tables, onUpdateTable }) {
 
         <p className="text-sm text-gray-500 mb-4">
           Enter a theme and AI will generate creative names for your {tables.length} tables.
+          Works with any OpenAI-compatible API.
         </p>
 
-        {/* Theme input */}
         <div className="space-y-3">
+          {/* Theme input */}
           <div>
             <label className="text-xs font-medium text-gray-600 block mb-1">Theme / Topic</label>
             <input
@@ -121,43 +143,102 @@ export default function TableNameGenerator({ tables, onUpdateTable }) {
             ))}
           </div>
 
-          {/* API Key */}
+          {/* API Settings */}
           <div>
-            {envKeyAvailable ? (
-              <div className="flex items-center gap-1.5 text-xs text-sage-dark">
-                <Key size={10} />
-                <span>Using API key from environment variable</span>
-              </div>
-            ) : (
-              <>
-                <button
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 cursor-pointer"
-                >
+            {envKeyAvailable && !showSettings ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-sage-dark">
                   <Key size={10} />
-                  {getStoredApiKey() ? 'API key saved' : 'Set API key'}
+                  <span>Using API key from environment</span>
+                </div>
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 cursor-pointer"
+                >
+                  <Settings size={10} />
+                  Settings
                 </button>
+              </div>
+            ) : !showSettings ? (
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 cursor-pointer"
+              >
+                <Settings size={10} />
+                {getStoredApiKey() ? 'API configured' : 'Configure API'}
+              </button>
+            ) : null}
 
-                {showApiKey && (
-                  <div className="mt-2 space-y-2">
-                    <input
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="sk-ant-..."
-                      className="input-field text-xs font-mono"
-                    />
-                    <div className="flex gap-2 items-center">
-                      <button onClick={handleSaveKey} className="btn-primary text-xs py-1 px-3">
-                        Save Key
-                      </button>
-                      <span className="text-[10px] text-gray-400">
-                        Or set VITE_ANTHROPIC_API_KEY in .env
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </>
+            {showSettings && (
+              <div className="mt-2 bg-gray-50 rounded-lg p-3 space-y-2.5">
+                <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">
+                  OpenAI-Compatible API Settings
+                </p>
+
+                {/* API Key */}
+                <div>
+                  <label className="text-xs text-gray-600 block mb-0.5">
+                    API Key {envKeyAvailable && <span className="text-sage-dark">(env set)</span>}
+                  </label>
+                  <input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder={envKeyAvailable ? 'Using VITE_OPENAI_API_KEY' : 'sk-...'}
+                    className="input-field text-xs font-mono"
+                  />
+                </div>
+
+                {/* Base URL */}
+                <div>
+                  <label className="text-xs text-gray-600 block mb-0.5">
+                    Base URL <span className="text-gray-400">(optional)</span>
+                    {envBaseUrlAvailable && <span className="text-sage-dark ml-1">(env set)</span>}
+                  </label>
+                  <input
+                    type="text"
+                    value={baseUrl}
+                    onChange={(e) => setBaseUrl(e.target.value)}
+                    placeholder={envBaseUrlAvailable ? 'Using VITE_OPENAI_BASE_URL' : 'https://api.openai.com/v1'}
+                    className="input-field text-xs font-mono"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    Leave blank for OpenAI. Set for Groq, Together, Ollama, Azure, etc.
+                  </p>
+                </div>
+
+                {/* Model */}
+                <div>
+                  <label className="text-xs text-gray-600 block mb-0.5">
+                    Model
+                  </label>
+                  <input
+                    type="text"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    placeholder={getEffectiveModel()}
+                    className="input-field text-xs font-mono"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    Default: gpt-4o-mini. Examples: gpt-4o, llama-3.1-70b, claude-sonnet-4-5-20250929
+                  </p>
+                </div>
+
+                <div className="flex gap-2 items-center">
+                  <button onClick={handleSaveSettings} className="btn-primary text-xs py-1 px-3">
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setShowSettings(false)}
+                    className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <span className="text-[10px] text-gray-400 ml-auto">
+                    Stored locally in browser
+                  </span>
+                </div>
+              </div>
             )}
           </div>
 

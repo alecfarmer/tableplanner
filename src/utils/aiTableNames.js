@@ -1,55 +1,106 @@
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 
-const API_KEY_STORAGE = 'wedding-planner-anthropic-key';
+const STORAGE_PREFIX = 'wedding-planner-ai';
 
 /**
- * Resolve the API key with priority:
- * 1. VITE_ANTHROPIC_API_KEY environment variable
- * 2. Manually stored key in localStorage
+ * Environment variables (set in .env):
+ *   VITE_OPENAI_API_KEY   — API key (required)
+ *   VITE_OPENAI_BASE_URL  — Base URL for any OpenAI-compatible endpoint (optional, defaults to OpenAI)
+ *   VITE_OPENAI_MODEL     — Model name (optional, defaults to gpt-4o-mini)
  */
+
+// --- Key management ---
+
 export function getEffectiveApiKey() {
-  return import.meta.env.VITE_ANTHROPIC_API_KEY || localStorage.getItem(API_KEY_STORAGE) || '';
+  return import.meta.env.VITE_OPENAI_API_KEY || localStorage.getItem(`${STORAGE_PREFIX}-key`) || '';
 }
 
 export function hasEnvApiKey() {
-  return !!import.meta.env.VITE_ANTHROPIC_API_KEY;
+  return !!import.meta.env.VITE_OPENAI_API_KEY;
 }
 
 export function getStoredApiKey() {
-  return localStorage.getItem(API_KEY_STORAGE) || '';
+  return localStorage.getItem(`${STORAGE_PREFIX}-key`) || '';
 }
 
 export function setStoredApiKey(key) {
   if (key) {
-    localStorage.setItem(API_KEY_STORAGE, key);
+    localStorage.setItem(`${STORAGE_PREFIX}-key`, key);
   } else {
-    localStorage.removeItem(API_KEY_STORAGE);
+    localStorage.removeItem(`${STORAGE_PREFIX}-key`);
+  }
+}
+
+// --- Base URL management ---
+
+export function getEffectiveBaseUrl() {
+  return import.meta.env.VITE_OPENAI_BASE_URL || localStorage.getItem(`${STORAGE_PREFIX}-base-url`) || '';
+}
+
+export function hasEnvBaseUrl() {
+  return !!import.meta.env.VITE_OPENAI_BASE_URL;
+}
+
+export function getStoredBaseUrl() {
+  return localStorage.getItem(`${STORAGE_PREFIX}-base-url`) || '';
+}
+
+export function setStoredBaseUrl(url) {
+  if (url) {
+    localStorage.setItem(`${STORAGE_PREFIX}-base-url`, url);
+  } else {
+    localStorage.removeItem(`${STORAGE_PREFIX}-base-url`);
+  }
+}
+
+// --- Model management ---
+
+export function getEffectiveModel() {
+  return import.meta.env.VITE_OPENAI_MODEL || localStorage.getItem(`${STORAGE_PREFIX}-model`) || 'gpt-4o-mini';
+}
+
+export function getStoredModel() {
+  return localStorage.getItem(`${STORAGE_PREFIX}-model`) || '';
+}
+
+export function setStoredModel(model) {
+  if (model) {
+    localStorage.setItem(`${STORAGE_PREFIX}-model`, model);
+  } else {
+    localStorage.removeItem(`${STORAGE_PREFIX}-model`);
   }
 }
 
 /**
- * Generate creative table names using Claude API.
- * Uses VITE_ANTHROPIC_API_KEY env var if set, otherwise falls back to the provided key.
- * @param {string} theme - The theme/topic for table names (e.g., "flowers", "Italian cities", "love songs")
+ * Generate creative table names using any OpenAI-compatible API.
+ * @param {string} theme - The theme/topic for table names
  * @param {number} count - Number of names to generate
- * @param {string} apiKey - Anthropic API key (fallback if env var not set)
+ * @param {object} overrides - Optional { apiKey, baseUrl, model } overrides
  * @returns {Promise<string[]>} Array of generated table names
  */
-export async function generateTableNames(theme, count, apiKey) {
-  const effectiveKey = import.meta.env.VITE_ANTHROPIC_API_KEY || apiKey;
-  if (!effectiveKey) {
-    throw new Error('No API key available. Set VITE_ANTHROPIC_API_KEY in .env or enter one manually.');
+export async function generateTableNames(theme, count, overrides = {}) {
+  const apiKey = overrides.apiKey || getEffectiveApiKey();
+  if (!apiKey) {
+    throw new Error('No API key available. Set VITE_OPENAI_API_KEY in .env or enter one manually.');
   }
 
-  const client = new Anthropic({
-    apiKey: effectiveKey,
+  const baseURL = overrides.baseUrl || getEffectiveBaseUrl() || undefined;
+  const model = overrides.model || getEffectiveModel();
+
+  const client = new OpenAI({
+    apiKey,
+    ...(baseURL ? { baseURL } : {}),
     dangerouslyAllowBrowser: true,
   });
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-5-20250929',
+  const response = await client.chat.completions.create({
+    model,
     max_tokens: 1024,
     messages: [
+      {
+        role: 'system',
+        content: 'You generate creative names for wedding seating tables. Respond with ONLY a JSON array of strings, no other text.',
+      },
       {
         role: 'user',
         content: `Generate exactly ${count} creative table names for a wedding seating chart based on this theme: "${theme}".
@@ -60,13 +111,12 @@ Requirements:
 - Names should be distinct from each other
 - Names should clearly relate to the theme
 
-Respond with ONLY a JSON array of strings, no other text. Example: ["Rose", "Lily", "Dahlia"]`,
+Example response format: ["Rose", "Lily", "Dahlia"]`,
       },
     ],
   });
 
-  const text = message.content[0].text.trim();
-  // Parse the JSON array from the response
+  const text = (response.choices[0]?.message?.content || '').trim();
   const match = text.match(/\[[\s\S]*\]/);
   if (!match) {
     throw new Error('Could not parse table names from AI response');
