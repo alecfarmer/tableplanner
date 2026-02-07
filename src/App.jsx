@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { DndContext, DragOverlay, pointerWithin, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
@@ -55,8 +55,22 @@ export default function App() {
   } = useGroups();
 
   const [selectedTableId, setSelectedTableId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useSeatingPersistence(guests, tables, groups, setGuests, setTables, setGroups);
+
+  // Compute highlighted guest IDs — assigned guests that match the active search
+  const highlightedGuestIds = useMemo(() => {
+    if (!searchQuery.trim()) return new Set();
+    const q = searchQuery.toLowerCase();
+    const ids = new Set();
+    for (const g of guests) {
+      if (g.tableId && (g.name.toLowerCase().includes(q) || g.party?.toLowerCase().includes(q))) {
+        ids.add(g.id);
+      }
+    }
+    return ids;
+  }, [searchQuery, guests]);
 
   const handleTableClick = useCallback((tableId) => {
     setSelectedTableId(tableId);
@@ -253,6 +267,9 @@ export default function App() {
               assigned={assigned}
               tables={tables}
               groups={groups}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              highlightedGuestIds={highlightedGuestIds}
               onAddGuest={handleAddGuest}
               onAddGuests={handleAddGuests}
               onRemoveGuest={handleRemoveGuest}
@@ -268,6 +285,7 @@ export default function App() {
             <TableCanvas
               tables={tables}
               guests={guests}
+              highlightedGuestIds={highlightedGuestIds}
               onMoveTable={moveTable}
               onUpdateTable={updateTable}
               onRemoveTable={handleRemoveTable}

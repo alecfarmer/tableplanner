@@ -9,6 +9,7 @@ const ZOOM_STEP = 0.15;
 export default function TableCanvas({
   tables,
   guests,
+  highlightedGuestIds,
   onMoveTable,
   onUpdateTable,
   onRemoveTable,
@@ -181,6 +182,7 @@ export default function TableCanvas({
               <TableShape
                 table={table}
                 guests={guests}
+                highlightedGuestIds={highlightedGuestIds}
                 onUpdateTable={onUpdateTable}
                 onRemoveTable={onRemoveTable}
               />

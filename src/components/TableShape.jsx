@@ -65,6 +65,7 @@ function getTableDimensions(shape) {
 export default function TableShape({
   table,
   guests,
+  highlightedGuestIds,
   onUpdateTable,
   onRemoveTable,
 }) {
@@ -225,6 +226,7 @@ export default function TableShape({
           seatIndex={i}
           guest={guestMap[i] || null}
           position={pos}
+          highlighted={!!(guestMap[i] && highlightedGuestIds?.has(guestMap[i].id))}
         />
       ))}
     </div>

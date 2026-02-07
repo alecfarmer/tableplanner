@@ -1,7 +1,7 @@
 import { useDroppable } from '@dnd-kit/core';
 import { useDraggable } from '@dnd-kit/core';
 
-export default function Seat({ tableId, seatIndex, guest, position, size = 40 }) {
+export default function Seat({ tableId, seatIndex, guest, position, size = 40, highlighted = false }) {
   const seatId = `seat-${tableId}-${seatIndex}`;
 
   const { setNodeRef: setDropRef, isOver } = useDroppable({
@@ -34,6 +34,7 @@ export default function Seat({ tableId, seatIndex, guest, position, size = 40 })
         ${guest ? 'seat-occupied cursor-grab active:cursor-grabbing' : 'seat-empty'}
         ${isOver ? 'drop-target-active' : ''}
         ${isDragging ? 'opacity-50 ring-2 ring-sage' : ''}
+        ${highlighted ? 'ring-2 ring-gold ring-offset-1 z-20' : ''}
       `}
       style={{
         width: size,
@@ -43,6 +44,10 @@ export default function Seat({ tableId, seatIndex, guest, position, size = 40 })
         fontSize: '9px',
         lineHeight: '1.1',
         padding: '2px',
+        ...(highlighted ? {
+          boxShadow: '0 0 8px 2px rgba(201,168,76,0.5)',
+          animation: 'pulse-gold 1.5s ease-in-out infinite',
+        } : {}),
         ...dragStyle,
       }}
       title={guest ? `${guest.name}${guest.dietary ? ` (${guest.dietary})` : ''}` : `Seat ${seatIndex + 1}`}

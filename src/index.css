@@ -74,6 +74,15 @@
   }
 }
 
+@keyframes pulse-gold {
+  0%, 100% {
+    box-shadow: 0 0 4px 1px rgba(201,168,76,0.3);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(201,168,76,0.6);
+  }
+}
+
 @media print {
   .no-print {
     display: none !important;

@@ -12,6 +12,9 @@ export default function GuestSidebar({
   assigned,
   tables,
   groups,
+  searchQuery,
+  onSearchChange,
+  highlightedGuestIds,
   onAddGuest,
   onAddGuests,
   onRemoveGuest,
@@ -24,7 +27,8 @@ export default function GuestSidebar({
   onClearAllGroups,
   groupColors,
 }) {
-  const [search, setSearch] = useState('');
+  const search = searchQuery ?? '';
+  const setSearch = onSearchChange ?? (() => {});
   const [assignedCollapsed, setAssignedCollapsed] = useState(false);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'groups'
   const [filterGroupId, setFilterGroupId] = useState(null);
@@ -261,6 +265,44 @@ export default function GuestSidebar({
             </div>
           )}
         </div>
+
+        {/* Search results for assigned guests */}
+        {search.trim() && highlightedGuestIds && highlightedGuestIds.size > 0 && (
+          <div className="p-4 border-t border-gray-100 bg-gold/5">
+            <div className="flex items-center gap-2 mb-2">
+              <Search size={14} className="text-gold" />
+              <h3 className="text-sm font-semibold text-gold-dark">
+                Found at tables ({highlightedGuestIds.size})
+              </h3>
+            </div>
+            <div className="space-y-1.5">
+              {assigned
+                .filter((g) => highlightedGuestIds.has(g.id))
+                .map((guest) => {
+                  const table = tables.find((t) => t.id === guest.tableId);
+                  return (
+                    <div
+                      key={guest.id}
+                      className="flex items-center gap-2 bg-white rounded-lg px-2.5 py-1.5 border border-gold/30 shadow-sm"
+                    >
+                      {groupMap[guest.groupId] && (
+                        <div
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: groupMap[guest.groupId].color }}
+                        />
+                      )}
+                      <span className="text-sm text-gray-800 font-medium truncate flex-1">
+                        {guest.name}
+                      </span>
+                      <span className="text-[11px] text-gold-dark bg-gold/10 px-1.5 py-0.5 rounded-full shrink-0">
+                        {table?.label || 'Table'} &middot; Seat {(guest.seatIndex ?? 0) + 1}
+                      </span>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
 
         {/* Assigned */}
         {assigned.length > 0 && (
