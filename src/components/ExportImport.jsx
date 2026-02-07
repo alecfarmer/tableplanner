@@ -7,6 +7,8 @@ export default function ExportImport({
   guests,
   tables,
   groups,
+  relationships = [],
+  venueElements = [],
   onImport,
 }) {
   const fileInputRef = useRef(null);
@@ -16,6 +18,8 @@ export default function ExportImport({
       guests,
       tables,
       groups,
+      relationships,
+      venueElements,
       exportedAt: new Date().toISOString(),
     });
     toast.success('Seating arrangement exported');

@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Plus, RotateCcw, Zap, Heart, LayoutGrid, X } from 'lucide-react';
+import { Plus, RotateCcw, Zap, Heart, LayoutGrid, X, MapPin } from 'lucide-react';
 import TableNameGenerator from './TableNameGenerator';
 import { LAYOUT_PRESETS } from '../utils/autoLayout';
+import { VENUE_ELEMENT_TYPES } from '../hooks/useVenueElements';
 
 export default function TableConfig({
   tables,
@@ -10,11 +11,13 @@ export default function TableConfig({
   onClearAssignments,
   onAutoSeat,
   onAutoLayout,
+  onAddVenueElement,
   guestCount,
   assignedCount,
   unassignedCount,
 }) {
   const [showLayoutPicker, setShowLayoutPicker] = useState(false);
+  const [showVenuePicker, setShowVenuePicker] = useState(false);
   const hasSweetheart = tables.some((t) => t.shape === 'sweetheart');
 
   return (
@@ -45,6 +48,42 @@ export default function TableConfig({
           <Plus size={14} />
           Rectangular
         </button>
+
+        {/* Venue Elements */}
+        <div className="relative">
+          <button
+            onClick={() => setShowVenuePicker(!showVenuePicker)}
+            className="btn-secondary flex items-center gap-1 text-sm py-1.5"
+          >
+            <MapPin size={14} />
+            Venue
+          </button>
+          {showVenuePicker && (
+            <div className="absolute top-full left-0 mt-1 z-40 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-52">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-gray-700">Add Venue Element</span>
+                <button onClick={() => setShowVenuePicker(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-1">
+                {VENUE_ELEMENT_TYPES.map((type) => (
+                  <button
+                    key={type.id}
+                    onClick={() => {
+                      onAddVenueElement(type.id);
+                      setShowVenuePicker(false);
+                    }}
+                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-sage/10 cursor-pointer text-left transition-colors"
+                  >
+                    <span className="text-sm">{type.icon}</span>
+                    <span className="text-[11px] text-gray-700">{type.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-2">

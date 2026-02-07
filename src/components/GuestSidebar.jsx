@@ -5,6 +5,7 @@ import GuestCard from './GuestCard';
 import GuestForm from './GuestForm';
 import CSVUploader from './CSVUploader';
 import GroupManager from './GroupManager';
+import RelationshipManager from './RelationshipManager';
 
 export default function GuestSidebar({
   guests,
@@ -12,12 +13,14 @@ export default function GuestSidebar({
   assigned,
   tables,
   groups,
+  relationships = [],
   searchQuery,
   onSearchChange,
   highlightedGuestIds,
   onAddGuest,
   onAddGuests,
   onRemoveGuest,
+  onUpdateGuest,
   onAddGroup,
   onRemoveGroup,
   onUpdateGroup,
@@ -25,6 +28,8 @@ export default function GuestSidebar({
   onSetGuestGroup,
   onClearGuestGroups,
   onClearAllGroups,
+  onAddRelationship,
+  onRemoveRelationship,
   groupColors,
 }) {
   const search = searchQuery ?? '';
@@ -176,6 +181,14 @@ export default function GuestSidebar({
         onClearGuestGroups={onClearGuestGroups}
         onClearAllGroups={onClearAllGroups}
         groupColors={groupColors}
+      />
+
+      {/* Seating Rules */}
+      <RelationshipManager
+        relationships={relationships}
+        guests={guests}
+        onAddRelationship={onAddRelationship}
+        onRemoveRelationship={onRemoveRelationship}
       />
 
       {/* Guest Lists */}

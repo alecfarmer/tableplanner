@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback } from 'react';
-import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize, AlertTriangle } from 'lucide-react';
 import TableShape from './TableShape';
+import VenueElement from './VenueElement';
 
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 2.5;
@@ -10,13 +11,18 @@ export default function TableCanvas({
   tables,
   guests,
   highlightedGuestIds,
+  tableConflicts,
+  venueElements = [],
   onMoveTable,
   onUpdateTable,
   onRemoveTable,
   onTableClick,
+  onMoveVenueElement,
+  onRemoveVenueElement,
 }) {
   const canvasRef = useRef(null);
   const [draggingTable, setDraggingTable] = useState(null);
+  const [draggingElement, setDraggingElement] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [dragMoved, setDragMoved] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -50,6 +56,7 @@ export default function TableCanvas({
 
       const rect = canvasRef.current.getBoundingClientRect();
       setDraggingTable(table.id);
+      setDraggingElement(null);
       setDragMoved(false);
       setDragOffset({
         x: e.clientX - rect.left - table.x * zoom,
@@ -60,16 +67,36 @@ export default function TableCanvas({
     [zoom]
   );
 
+  const handleElementPointerDown = useCallback(
+    (e, element) => {
+      if (e.target.closest('button')) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      setDraggingElement(element.id);
+      setDraggingTable(null);
+      setDragMoved(false);
+      setDragOffset({
+        x: e.clientX - rect.left - element.x * zoom,
+        y: e.clientY - rect.top - element.y * zoom,
+      });
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [zoom]
+  );
+
   const handlePointerMove = useCallback(
     (e) => {
-      if (!draggingTable) return;
+      if (!draggingTable && !draggingElement) return;
       setDragMoved(true);
       const rect = canvasRef.current.getBoundingClientRect();
       const x = Math.max(0, (e.clientX - rect.left - dragOffset.x) / zoom);
       const y = Math.max(0, (e.clientY - rect.top - dragOffset.y) / zoom);
-      onMoveTable(draggingTable, x, y);
+      if (draggingTable) {
+        onMoveTable(draggingTable, x, y);
+      } else if (draggingElement && onMoveVenueElement) {
+        onMoveVenueElement(draggingElement, x, y);
+      }
     },
-    [draggingTable, dragOffset, onMoveTable, zoom]
+    [draggingTable, draggingElement, dragOffset, onMoveTable, onMoveVenueElement, zoom]
   );
 
   const handlePointerUp = useCallback(
@@ -78,6 +105,7 @@ export default function TableCanvas({
         onTableClick(table.id);
       }
       setDraggingTable(null);
+      setDraggingElement(null);
       setDragMoved(false);
     },
     [draggingTable, dragMoved, onTableClick]
@@ -137,6 +165,7 @@ export default function TableCanvas({
         onPointerMove={handlePointerMove}
         onPointerUp={() => {
           setDraggingTable(null);
+          setDraggingElement(null);
           setDragMoved(false);
         }}
         style={{
@@ -154,7 +183,7 @@ export default function TableCanvas({
             minHeight: `${600 / zoom}px`,
           }}
         >
-          {tables.length === 0 && (
+          {tables.length === 0 && venueElements.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center" style={{ transform: `scale(${1 / zoom})`, transformOrigin: 'center center' }}>
               <div className="text-center text-gray-400">
                 <p className="text-lg font-serif">No tables yet</p>
@@ -165,29 +194,63 @@ export default function TableCanvas({
             </div>
           )}
 
-          {tables.map((table) => (
+          {/* Venue elements */}
+          {venueElements.map((element) => (
             <div
-              key={table.id}
+              key={element.id}
               className={`absolute ${
-                draggingTable === table.id ? 'z-50 cursor-grabbing' : 'cursor-grab'
+                draggingElement === element.id ? 'z-40 cursor-grabbing' : 'cursor-grab'
               }`}
               style={{
-                left: table.x,
-                top: table.y,
+                left: element.x,
+                top: element.y,
                 touchAction: 'none',
               }}
-              onPointerDown={(e) => handlePointerDown(e, table)}
-              onPointerUp={(e) => handlePointerUp(e, table)}
+              onPointerDown={(e) => handleElementPointerDown(e, element)}
             >
-              <TableShape
-                table={table}
-                guests={guests}
-                highlightedGuestIds={highlightedGuestIds}
-                onUpdateTable={onUpdateTable}
-                onRemoveTable={onRemoveTable}
+              <VenueElement
+                element={element}
+                onRemove={onRemoveVenueElement}
               />
             </div>
           ))}
+
+          {/* Tables */}
+          {tables.map((table) => {
+            const hasConflict = tableConflicts?.has(table.id);
+            return (
+              <div
+                key={table.id}
+                className={`absolute ${
+                  draggingTable === table.id ? 'z-50 cursor-grabbing' : 'cursor-grab'
+                }`}
+                style={{
+                  left: table.x,
+                  top: table.y,
+                  touchAction: 'none',
+                }}
+                onPointerDown={(e) => handlePointerDown(e, table)}
+                onPointerUp={(e) => handlePointerUp(e, table)}
+              >
+                {/* Conflict badge */}
+                {hasConflict && (
+                  <div
+                    className="absolute -top-2 -left-2 z-20 bg-red-500 text-white rounded-full p-0.5"
+                    title={`Seating conflict: ${tableConflicts.get(table.id).map((c) => `${c.guest1?.name} & ${c.guest2?.name}`).join(', ')}`}
+                  >
+                    <AlertTriangle size={12} />
+                  </div>
+                )}
+                <TableShape
+                  table={table}
+                  guests={guests}
+                  highlightedGuestIds={highlightedGuestIds}
+                  onUpdateTable={onUpdateTable}
+                  onRemoveTable={onRemoveTable}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

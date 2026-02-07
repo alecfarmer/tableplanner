@@ -15,6 +15,8 @@ export function useGuests(initialGuests = INITIAL_GUESTS) {
         dietary: guest.dietary || '',
         notes: guest.notes || '',
         groupId: guest.groupId || null,
+        rsvp: guest.rsvp || 'pending',
+        meal: guest.meal || '',
         tableId: null,
         seatIndex: null,
       },

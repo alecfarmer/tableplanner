@@ -2,7 +2,11 @@ import { useEffect, useRef } from 'react';
 
 const STORAGE_KEY = 'wedding-seating-planner';
 
-export function useSeatingPersistence(guests, tables, groups, setGuests, setTables, setGroups) {
+export function useSeatingPersistence(
+  guests, tables, groups, setGuests, setTables, setGroups,
+  relationships, setRelationships,
+  venueElements, setVenueElements
+) {
   const initialized = useRef(false);
 
   // Load from localStorage on mount
@@ -23,11 +27,17 @@ export function useSeatingPersistence(guests, tables, groups, setGuests, setTabl
         if (data.groups && Array.isArray(data.groups)) {
           setGroups(data.groups);
         }
+        if (data.relationships && Array.isArray(data.relationships) && setRelationships) {
+          setRelationships(data.relationships);
+        }
+        if (data.venueElements && Array.isArray(data.venueElements) && setVenueElements) {
+          setVenueElements(data.venueElements);
+        }
       }
     } catch {
       // Ignore corrupted data
     }
-  }, [setGuests, setTables, setGroups]);
+  }, [setGuests, setTables, setGroups, setRelationships, setVenueElements]);
 
   // Auto-save on changes (debounced)
   useEffect(() => {
@@ -37,7 +47,12 @@ export function useSeatingPersistence(guests, tables, groups, setGuests, setTabl
       try {
         localStorage.setItem(
           STORAGE_KEY,
-          JSON.stringify({ guests, tables, groups, savedAt: new Date().toISOString() })
+          JSON.stringify({
+            guests, tables, groups,
+            relationships: relationships || [],
+            venueElements: venueElements || [],
+            savedAt: new Date().toISOString(),
+          })
         );
       } catch {
         // Storage might be full
@@ -45,7 +60,7 @@ export function useSeatingPersistence(guests, tables, groups, setGuests, setTabl
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [guests, tables, groups]);
+  }, [guests, tables, groups, relationships, venueElements]);
 }
 
 export function clearPersistedData() {

@@ -15,24 +15,51 @@ export default function PrintView({ tables, guests, groups = [] }) {
 
   const unassigned = guests.filter((g) => !g.tableId);
 
+  // Meal summary
+  const mealCounts = {};
+  for (const g of guests) {
+    if (g.meal) {
+      mealCounts[g.meal] = (mealCounts[g.meal] || 0) + 1;
+    }
+  }
+
   return (
     <div className="hidden print-only p-8" style={{ display: 'none' }}>
       <h1 className="font-serif text-3xl text-wine mb-2">Seating Arrangement</h1>
-      <p className="text-sm text-gray-500 mb-6">
+      <p className="text-sm text-gray-500 mb-2">
         {guests.length} guests &middot; {tables.length} tables
       </p>
+
+      {/* Meal summary */}
+      {Object.keys(mealCounts).length > 0 && (
+        <div className="text-xs text-gray-600 mb-4 flex gap-3">
+          <span className="font-semibold">Meal totals:</span>
+          {Object.entries(mealCounts).map(([meal, count]) => (
+            <span key={meal}>{meal}: {count}</span>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         {tables.map((table) => {
           const tableGuests = (assignedByTable[table.id] || []).sort(
             (a, b) => (a.seatIndex ?? 0) - (b.seatIndex ?? 0)
           );
+          const tableMeals = {};
+          for (const g of tableGuests) {
+            if (g.meal) tableMeals[g.meal] = (tableMeals[g.meal] || 0) + 1;
+          }
           return (
             <div key={table.id} className="border border-gray-300 rounded-lg p-4">
               <h3 className="font-serif font-semibold text-wine">{table.label}</h3>
-              <p className="text-xs text-gray-500 mb-2">
-                {table.shape === 'round' ? 'Round' : 'Rectangular'} &middot; {table.seats} seats
+              <p className="text-xs text-gray-500 mb-1">
+                {table.shape === 'sweetheart' ? 'Sweetheart' : table.shape === 'round' ? 'Round' : 'Rectangular'} &middot; {table.shape === 'sweetheart' ? 2 : table.seats} seats
               </p>
+              {Object.keys(tableMeals).length > 0 && (
+                <p className="text-[10px] text-gray-500 mb-2">
+                  Meals: {Object.entries(tableMeals).map(([m, c]) => `${m} (${c})`).join(', ')}
+                </p>
+              )}
               {tableGuests.length > 0 ? (
                 <ol className="text-sm space-y-0.5 pl-4">
                   {tableGuests.map((g) => (
@@ -45,6 +72,9 @@ export default function PrintView({ tables, guests, groups = [] }) {
                         >
                           {groupMap[g.groupId].name}
                         </span>
+                      )}
+                      {g.meal && (
+                        <span className="text-gray-500 text-xs ml-1">[{g.meal}]</span>
                       )}
                       {g.dietary && (
                         <span className="text-gold text-xs ml-1">({g.dietary})</span>

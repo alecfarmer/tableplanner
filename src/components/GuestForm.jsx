@@ -2,11 +2,22 @@ import { useState } from 'react';
 import { UserPlus, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import { parseBulkText } from '../utils/csvParser';
 
+const RSVP_OPTIONS = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'invited', label: 'Invited' },
+  { value: 'accepted', label: 'Accepted' },
+  { value: 'declined', label: 'Declined' },
+];
+
+const MEAL_SUGGESTIONS = ['Chicken', 'Fish', 'Beef', 'Vegetarian', 'Vegan'];
+
 export default function GuestForm({ onAddGuest, onAddGuests }) {
   const [name, setName] = useState('');
   const [party, setParty] = useState('');
   const [dietary, setDietary] = useState('');
   const [notes, setNotes] = useState('');
+  const [rsvp, setRsvp] = useState('pending');
+  const [meal, setMeal] = useState('');
   const [showBulk, setShowBulk] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [showOptional, setShowOptional] = useState(false);
@@ -14,11 +25,13 @@ export default function GuestForm({ onAddGuest, onAddGuests }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onAddGuest({ name: name.trim(), party, dietary, notes });
+    onAddGuest({ name: name.trim(), party, dietary, notes, rsvp, meal });
     setName('');
     setParty('');
     setDietary('');
     setNotes('');
+    setRsvp('pending');
+    setMeal('');
   };
 
   const handleBulkAdd = () => {
@@ -67,6 +80,15 @@ export default function GuestForm({ onAddGuest, onAddGuests }) {
                 placeholder="Party/Group"
                 className="input-field"
               />
+              <select
+                value={rsvp}
+                onChange={(e) => setRsvp(e.target.value)}
+                className="input-field"
+              >
+                {RSVP_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
               <input
                 type="text"
                 value={dietary}
@@ -74,6 +96,21 @@ export default function GuestForm({ onAddGuest, onAddGuests }) {
                 placeholder="Dietary needs"
                 className="input-field"
               />
+              <div>
+                <input
+                  type="text"
+                  value={meal}
+                  onChange={(e) => setMeal(e.target.value)}
+                  placeholder="Meal choice"
+                  className="input-field"
+                  list="meal-suggestions"
+                />
+                <datalist id="meal-suggestions">
+                  {MEAL_SUGGESTIONS.map((m) => (
+                    <option key={m} value={m} />
+                  ))}
+                </datalist>
+              </div>
               <input
                 type="text"
                 value={notes}
