@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { DndContext, DragOverlay, pointerWithin, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
@@ -7,6 +7,7 @@ import { Heart } from 'lucide-react';
 import GuestSidebar from './components/GuestSidebar';
 import TableCanvas from './components/TableCanvas';
 import TableConfig from './components/TableConfig';
+import TableDetailModal from './components/TableDetailModal';
 import ExportImport from './components/ExportImport';
 import PrintView from './components/PrintView';
 import { useGuests } from './hooks/useGuests';
@@ -52,7 +53,13 @@ export default function App() {
     GROUP_COLORS,
   } = useGroups();
 
+  const [selectedTableId, setSelectedTableId] = useState(null);
+
   useSeatingPersistence(guests, tables, groups, setGuests, setTables, setGroups);
+
+  const handleTableClick = useCallback((tableId) => {
+    setSelectedTableId(tableId);
+  }, []);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -254,12 +261,26 @@ export default function App() {
               onMoveTable={moveTable}
               onUpdateTable={updateTable}
               onRemoveTable={handleRemoveTable}
+              onTableClick={handleTableClick}
             />
           </div>
         </div>
 
         <DragOverlay dropAnimation={null} />
       </DndContext>
+
+      {selectedTableId && (
+        <TableDetailModal
+          table={tables.find((t) => t.id === selectedTableId)}
+          guests={guests}
+          allGuests={guests}
+          groups={groups}
+          onClose={() => setSelectedTableId(null)}
+          onAssignGuest={assignGuest}
+          onUnassignGuest={unassignGuest}
+          onSwapGuests={swapGuests}
+        />
+      )}
 
       <PrintView tables={tables} guests={guests} groups={groups} />
     </>
