@@ -1,11 +1,12 @@
 import { useRef, useState, useCallback } from 'react';
-import { ZoomIn, ZoomOut, Maximize, AlertTriangle } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize, AlertTriangle, Grid3x3, Image } from 'lucide-react';
 import TableShape from './TableShape';
 import VenueElement from './VenueElement';
 
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 2.5;
 const ZOOM_STEP = 0.15;
+const GRID_SIZE = 24;
 
 export default function TableCanvas({
   tables,
@@ -13,14 +14,20 @@ export default function TableCanvas({
   highlightedGuestIds,
   tableConflicts,
   venueElements = [],
+  gridSnap,
+  backgroundImage,
   onMoveTable,
   onUpdateTable,
   onRemoveTable,
+  onDuplicateTable,
   onTableClick,
   onMoveVenueElement,
   onRemoveVenueElement,
+  onToggleGridSnap,
+  onSetBackgroundImage,
 }) {
   const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [draggingTable, setDraggingTable] = useState(null);
   const [draggingElement, setDraggingElement] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -40,6 +47,11 @@ export default function TableCanvas({
       });
     }
   }, []);
+
+  const snapToGrid = useCallback((val) => {
+    if (!gridSnap) return val;
+    return Math.round(val / GRID_SIZE) * GRID_SIZE;
+  }, [gridSnap]);
 
   const handlePointerDown = useCallback(
     (e, table) => {
@@ -88,15 +100,17 @@ export default function TableCanvas({
       if (!draggingTable && !draggingElement) return;
       setDragMoved(true);
       const rect = canvasRef.current.getBoundingClientRect();
-      const x = Math.max(0, (e.clientX - rect.left - dragOffset.x) / zoom);
-      const y = Math.max(0, (e.clientY - rect.top - dragOffset.y) / zoom);
+      const rawX = Math.max(0, (e.clientX - rect.left - dragOffset.x) / zoom);
+      const rawY = Math.max(0, (e.clientY - rect.top - dragOffset.y) / zoom);
+      const x = snapToGrid(rawX);
+      const y = snapToGrid(rawY);
       if (draggingTable) {
         onMoveTable(draggingTable, x, y);
       } else if (draggingElement && onMoveVenueElement) {
         onMoveVenueElement(draggingElement, x, y);
       }
     },
-    [draggingTable, draggingElement, dragOffset, onMoveTable, onMoveVenueElement, zoom]
+    [draggingTable, draggingElement, dragOffset, onMoveTable, onMoveVenueElement, zoom, snapToGrid]
   );
 
   const handlePointerUp = useCallback(
@@ -110,6 +124,16 @@ export default function TableCanvas({
     },
     [draggingTable, dragMoved, onTableClick]
   );
+
+  const handleBackgroundUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (onSetBackgroundImage) onSetBackgroundImage(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const zoomPercent = Math.round(zoom * 100);
 
@@ -148,12 +172,44 @@ export default function TableCanvas({
         >
           <Maximize size={16} />
         </button>
+        <div className="w-px h-5 bg-gray-200 mx-0.5" />
+        {onToggleGridSnap && (
+          <button
+            onClick={onToggleGridSnap}
+            className={`p-1.5 rounded cursor-pointer transition-colors ${gridSnap ? 'bg-sage/20 text-sage-dark' : 'text-gray-400 hover:bg-gray-100'}`}
+            title={gridSnap ? 'Grid snap ON' : 'Grid snap OFF'}
+          >
+            <Grid3x3 size={16} />
+          </button>
+        )}
+        {onSetBackgroundImage && (
+          <button
+            onClick={() => {
+              if (backgroundImage) {
+                onSetBackgroundImage(null);
+              } else {
+                fileInputRef.current?.click();
+              }
+            }}
+            className={`p-1.5 rounded cursor-pointer transition-colors ${backgroundImage ? 'bg-sage/20 text-sage-dark' : 'text-gray-400 hover:bg-gray-100'}`}
+            title={backgroundImage ? 'Remove floor plan' : 'Upload floor plan'}
+          >
+            <Image size={16} />
+          </button>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleBackgroundUpload}
+          className="hidden"
+        />
       </div>
 
       {/* Hint */}
       {tables.length > 0 && (
         <div className="absolute bottom-3 right-3 z-30 text-[10px] text-gray-400 bg-white/80 backdrop-blur-sm rounded px-2 py-1 no-print">
-          Ctrl+Scroll to zoom &middot; Click table to inspect
+          Ctrl+Scroll to zoom &middot; Click table to inspect{gridSnap ? ' &middot; Grid snap ON' : ''}
         </div>
       )}
 
@@ -169,9 +225,12 @@ export default function TableCanvas({
           setDragMoved(false);
         }}
         style={{
-          backgroundImage:
-            'radial-gradient(circle, #d1d5db 1px, transparent 1px)',
-          backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
+          backgroundImage: gridSnap
+            ? `linear-gradient(to right, rgba(183,196,161,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(183,196,161,0.2) 1px, transparent 1px)`
+            : 'radial-gradient(circle, #d1d5db 1px, transparent 1px)',
+          backgroundSize: gridSnap
+            ? `${GRID_SIZE * zoom}px ${GRID_SIZE * zoom}px`
+            : `${24 * zoom}px ${24 * zoom}px`,
         }}
       >
         <div
@@ -183,6 +242,15 @@ export default function TableCanvas({
             minHeight: `${600 / zoom}px`,
           }}
         >
+          {/* Background floor plan */}
+          {backgroundImage && (
+            <img
+              src={backgroundImage}
+              alt="Floor plan"
+              className="absolute inset-0 w-full h-full object-contain opacity-20 pointer-events-none"
+            />
+          )}
+
           {tables.length === 0 && venueElements.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center" style={{ transform: `scale(${1 / zoom})`, transformOrigin: 'center center' }}>
               <div className="text-center text-gray-400">
@@ -247,6 +315,7 @@ export default function TableCanvas({
                   highlightedGuestIds={highlightedGuestIds}
                   onUpdateTable={onUpdateTable}
                   onRemoveTable={onRemoveTable}
+                  onDuplicateTable={onDuplicateTable}
                 />
               </div>
             );

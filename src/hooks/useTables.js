@@ -17,6 +17,8 @@ export function useTables(initialTables = []) {
           shape: 'round',
           x: 100 + (num % 4) * 250,
           y: 100 + Math.floor(num / 4) * 250,
+          notes: '',
+          rotation: 0,
           ...overrides,
         },
       ];
@@ -40,6 +42,24 @@ export function useTables(initialTables = []) {
     );
   }, []);
 
+  const duplicateTable = useCallback((tableId) => {
+    setTables((prev) => {
+      const source = prev.find((t) => t.id === tableId);
+      if (!source) return prev;
+      const num = prev.length + 1;
+      return [
+        ...prev,
+        {
+          ...source,
+          id: crypto.randomUUID(),
+          label: `${source.label} (copy)`,
+          x: source.x + 40,
+          y: source.y + 40,
+        },
+      ];
+    });
+  }, []);
+
   return {
     tables,
     setTables,
@@ -47,5 +67,6 @@ export function useTables(initialTables = []) {
     removeTable,
     updateTable,
     moveTable,
+    duplicateTable,
   };
 }

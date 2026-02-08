@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Edit3, Check, Trash2, Settings, Heart } from 'lucide-react';
+import { Edit3, Check, Trash2, Settings, Heart, Copy, RotateCw } from 'lucide-react';
 import Seat from './Seat';
 
 export function getSeatPositions(shape, seats, width, height) {
@@ -62,12 +62,20 @@ function getTableDimensions(shape) {
   return { width: 260, height: 180 };
 }
 
+function getCapacityClass(assigned, total) {
+  const ratio = total > 0 ? assigned / total : 0;
+  if (ratio >= 1) return 'capacity-full';
+  if (ratio >= 0.75) return 'capacity-warning';
+  return 'capacity-ok';
+}
+
 export default function TableShape({
   table,
   guests,
   highlightedGuestIds,
   onUpdateTable,
   onRemoveTable,
+  onDuplicateTable,
 }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(table.label);
@@ -76,6 +84,7 @@ export default function TableShape({
   const isSweetheart = table.shape === 'sweetheart';
   const { width, height } = getTableDimensions(table.shape);
   const effectiveSeats = isSweetheart ? 2 : table.seats;
+  const rotation = table.rotation || 0;
 
   const seatPositions = getSeatPositions(table.shape, effectiveSeats, width, height);
 
@@ -92,6 +101,7 @@ export default function TableShape({
   };
 
   const assignedCount = Object.keys(guestMap).length;
+  const capacityClass = getCapacityClass(assignedCount, effectiveSeats);
 
   const labelBlock = editing ? (
     <div className="flex items-center gap-1">
@@ -125,7 +135,15 @@ export default function TableShape({
   );
 
   return (
-    <div className="relative" style={{ width, height }}>
+    <div
+      className="relative"
+      style={{
+        width,
+        height,
+        transform: rotation ? `rotate(${rotation}deg)` : undefined,
+        transformOrigin: 'center center',
+      }}
+    >
       {/* Table surface */}
       {isSweetheart ? (
         <div
@@ -142,31 +160,53 @@ export default function TableShape({
           </span>
         </div>
       ) : table.shape === 'round' ? (
-        <div className="absolute inset-8 bg-blush/40 border-2 border-blush-dark rounded-full flex flex-col items-center justify-center">
+        <div className={`absolute inset-8 bg-blush/40 border-2 border-blush-dark rounded-full flex flex-col items-center justify-center ${capacityClass}`}>
           {labelBlock}
           <span className="text-[10px] text-gray-500 mt-0.5">
             {assignedCount}/{table.seats}
           </span>
+          {table.notes && (
+            <span className="text-[8px] text-gray-400 mt-0.5 truncate max-w-[60px]" title={table.notes}>
+              {table.notes}
+            </span>
+          )}
         </div>
       ) : (
-        <div className="absolute inset-6 bg-blush/40 border-2 border-blush-dark rounded-lg flex flex-col items-center justify-center">
+        <div className={`absolute inset-6 bg-blush/40 border-2 border-blush-dark rounded-lg flex flex-col items-center justify-center ${capacityClass}`}>
           {labelBlock}
           <span className="text-[10px] text-gray-500 mt-0.5">
             {assignedCount}/{table.seats}
           </span>
+          {table.notes && (
+            <span className="text-[8px] text-gray-400 mt-0.5 truncate max-w-[80px]" title={table.notes}>
+              {table.notes}
+            </span>
+          )}
         </div>
       )}
 
       {/* Table controls */}
       <div className="absolute -top-3 -right-3 flex gap-1 z-10">
         {!isSweetheart && (
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="bg-white shadow-sm border border-gray-200 rounded-full p-1 hover:bg-gray-50 text-gray-500 cursor-pointer"
-          >
-            <Settings size={12} />
-          </button>
+          <>
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="bg-white shadow-sm border border-gray-200 rounded-full p-1 hover:bg-gray-50 text-gray-500 cursor-pointer"
+            >
+              <Settings size={12} />
+            </button>
+            {onDuplicateTable && (
+              <button
+                onClick={() => onDuplicateTable(table.id)}
+                onPointerDown={(e) => e.stopPropagation()}
+                className="bg-white shadow-sm border border-gray-200 rounded-full p-1 hover:bg-gray-50 text-gray-500 cursor-pointer"
+                title="Duplicate table"
+              >
+                <Copy size={12} />
+              </button>
+            )}
+          </>
         )}
         <button
           onClick={() => onRemoveTable(table.id)}
@@ -180,7 +220,7 @@ export default function TableShape({
       {/* Settings popup (not for sweetheart) */}
       {showSettings && !isSweetheart && (
         <div
-          className="absolute -top-2 right-10 z-20 bg-white shadow-lg rounded-lg border border-gray-200 p-3 w-48"
+          className="absolute -top-2 right-10 z-20 bg-white shadow-lg rounded-lg border border-gray-200 p-3 w-52"
           onPointerDown={(e) => e.stopPropagation()}
         >
           <div className="space-y-2">
@@ -207,6 +247,33 @@ export default function TableShape({
                 <option value="round">Round</option>
                 <option value="rectangular">Rectangular</option>
               </select>
+            </label>
+            {table.shape === 'rectangular' && (
+              <label className="block">
+                <span className="text-xs text-gray-500">Rotation</span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <input
+                    type="range"
+                    min={0}
+                    max={360}
+                    step={15}
+                    value={rotation}
+                    onChange={(e) => onUpdateTable(table.id, { rotation: parseInt(e.target.value) })}
+                    className="flex-1"
+                  />
+                  <span className="text-[10px] text-gray-500 w-8">{rotation}°</span>
+                </div>
+              </label>
+            )}
+            <label className="block">
+              <span className="text-xs text-gray-500">Notes</span>
+              <input
+                type="text"
+                value={table.notes || ''}
+                onChange={(e) => onUpdateTable(table.id, { notes: e.target.value })}
+                placeholder="e.g. Near dance floor"
+                className="input-field mt-0.5"
+              />
             </label>
             <button
               onClick={() => setShowSettings(false)}

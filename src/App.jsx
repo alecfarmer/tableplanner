@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { DndContext, DragOverlay, pointerWithin, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
-import { Heart, Undo2, Redo2, Share2, Check } from 'lucide-react';
+import { Heart, Undo2, Redo2, Share2, Check, Moon, Sun, Clock, Search as SearchIcon, PieChart } from 'lucide-react';
 
 import GuestSidebar from './components/GuestSidebar';
 import TableCanvas from './components/TableCanvas';
@@ -10,15 +10,21 @@ import TableConfig from './components/TableConfig';
 import TableDetailModal from './components/TableDetailModal';
 import ExportImport from './components/ExportImport';
 import PrintView from './components/PrintView';
+import FindMySeat from './components/FindMySeat';
+import StatsPanel from './components/StatsPanel';
+import VersionManager from './components/VersionManager';
 import { useGuests } from './hooks/useGuests';
 import { useTables } from './hooks/useTables';
 import { useGroups } from './hooks/useGroups';
 import { useRelationships } from './hooks/useRelationships';
 import { useVenueElements } from './hooks/useVenueElements';
 import { useHistory } from './hooks/useHistory';
+import { useVersions } from './hooks/useVersions';
 import { useSeatingPersistence } from './hooks/useSeatingPersistence';
 import { computeAutoSeat } from './utils/autoSeat';
 import { computeAutoLayout } from './utils/autoLayout';
+import { computeAutoBalance } from './utils/autoBalance';
+import { applyTemplate } from './utils/templates';
 import { generateShareUrl, loadFromShareUrl, clearShareHash } from './utils/shareLink';
 
 export default function App() {
@@ -46,6 +52,7 @@ export default function App() {
     removeTable,
     updateTable,
     moveTable,
+    duplicateTable,
   } = useTables();
 
   const {
@@ -76,10 +83,28 @@ export default function App() {
   } = useVenueElements();
 
   const { snapshot, undo, redo, canUndo, canRedo } = useHistory();
+  const { versions, saveVersion, deleteVersion } = useVersions();
 
   const [selectedTableId, setSelectedTableId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [shareUrl, setShareUrl] = useState(null);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('wedding-dark-mode') === 'true';
+    }
+    return false;
+  });
+  const [gridSnap, setGridSnap] = useState(false);
+  const [backgroundImage, setBackgroundImage] = useState(null);
+  const [showFindMySeat, setShowFindMySeat] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [showVersions, setShowVersions] = useState(false);
+
+  // Dark mode
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+    localStorage.setItem('wedding-dark-mode', darkMode);
+  }, [darkMode]);
 
   useSeatingPersistence(guests, tables, groups, setGuests, setTables, setGroups, relationships, setRelationships, venueElements, setVenueElements);
 
@@ -128,6 +153,19 @@ export default function App() {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
         handleRedo();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        window.print();
+      }
+      if (e.key === 'Escape') {
+        setSelectedTableId(null);
+        setShowFindMySeat(false);
+        setShowStats(false);
+        setShowVersions(false);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        // Don't prevent default - let browser handle it or open Find My Seat
       }
     };
     window.addEventListener('keydown', handler);
@@ -185,6 +223,15 @@ export default function App() {
     [guests, unassignGuest, removeTable, saveSnapshot]
   );
 
+  const handleDuplicateTable = useCallback(
+    (tableId) => {
+      saveSnapshot();
+      duplicateTable(tableId);
+      toast.success('Table duplicated');
+    },
+    [duplicateTable, saveSnapshot]
+  );
+
   const handleAddGuest = useCallback(
     (guest) => {
       saveSnapshot();
@@ -211,6 +258,14 @@ export default function App() {
       if (guest) toast.success(`Removed ${guest.name}`);
     },
     [guests, removeGuest, saveSnapshot]
+  );
+
+  const handleUpdateGuest = useCallback(
+    (id, updates) => {
+      saveSnapshot();
+      updateGuest(id, updates);
+    },
+    [updateGuest, saveSnapshot]
   );
 
   const handleImport = useCallback(
@@ -261,6 +316,32 @@ export default function App() {
     toast.success(`Applied ${preset} layout`);
   }, [tables, moveTable, saveSnapshot]);
 
+  const handleAutoBalance = useCallback(() => {
+    saveSnapshot();
+    const moves = computeAutoBalance(guests, tables);
+    if (moves.length === 0) {
+      toast('Nothing to balance');
+      return;
+    }
+    for (const move of moves) {
+      if (move.tableId === null) {
+        unassignGuest(move.guestId);
+      } else {
+        assignGuest(move.guestId, move.tableId, move.seatIndex);
+      }
+    }
+    toast.success(`Balanced ${moves.length} seat assignments`);
+  }, [guests, tables, assignGuest, unassignGuest, saveSnapshot]);
+
+  const handleApplyTemplate = useCallback((templateId) => {
+    saveSnapshot();
+    const newTables = applyTemplate(templateId);
+    if (newTables) {
+      setTables(newTables);
+      toast.success('Template applied');
+    }
+  }, [setTables, saveSnapshot]);
+
   const handleClearAllGroups = useCallback(() => {
     saveSnapshot();
     for (const guest of guests) {
@@ -280,7 +361,6 @@ export default function App() {
         toast.success('Share link copied to clipboard!');
         setTimeout(() => setShareUrl(null), 3000);
       }).catch(() => {
-        // Fallback: show the URL
         setShareUrl(url);
         toast('Share link generated — copy from address bar');
       });
@@ -297,6 +377,17 @@ export default function App() {
     },
     [addRelationship, saveSnapshot]
   );
+
+  const handleSaveVersion = useCallback((name) => {
+    saveVersion(name, { guests, tables, groups, relationships, venueElements });
+    toast.success(`Version "${name}" saved`);
+  }, [saveVersion, guests, tables, groups, relationships, venueElements]);
+
+  const handleLoadVersion = useCallback((version) => {
+    saveSnapshot();
+    restoreState(version.state);
+    toast.success(`Loaded version "${version.name}"`);
+  }, [saveSnapshot, restoreState]);
 
   const handleDragEnd = useCallback(
     (event) => {
@@ -344,9 +435,9 @@ export default function App() {
         toastOptions={{
           duration: 2000,
           style: {
-            background: '#fff',
-            color: '#333',
-            border: '1px solid #e5e7eb',
+            background: darkMode ? '#1f2937' : '#fff',
+            color: darkMode ? '#e5e7eb' : '#333',
+            border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
             fontSize: '14px',
           },
         }}
@@ -375,6 +466,30 @@ export default function App() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {/* Dark mode toggle */}
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className="p-1.5 rounded hover:bg-gray-100 text-gray-500 cursor-pointer transition-colors"
+                title={darkMode ? 'Light mode' : 'Dark mode'}
+              >
+                {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+              {/* Find My Seat */}
+              <button
+                onClick={() => setShowFindMySeat(true)}
+                className="p-1.5 rounded hover:bg-gray-100 text-gray-500 cursor-pointer transition-colors"
+                title="Find My Seat"
+              >
+                <SearchIcon size={16} />
+              </button>
+              {/* Versions */}
+              <button
+                onClick={() => setShowVersions(true)}
+                className="p-1.5 rounded hover:bg-gray-100 text-gray-500 cursor-pointer transition-colors"
+                title="Saved Versions"
+              >
+                <Clock size={16} />
+              </button>
               {/* Undo/Redo */}
               <div className="flex items-center gap-0.5 mr-1">
                 <button
@@ -426,7 +541,10 @@ export default function App() {
             onClearAssignments={() => { saveSnapshot(); clearAllAssignments(); }}
             onAutoSeat={handleAutoSeat}
             onAutoLayout={handleAutoLayout}
+            onAutoBalance={handleAutoBalance}
             onAddVenueElement={(typeId) => { saveSnapshot(); addVenueElement(typeId); }}
+            onApplyTemplate={handleApplyTemplate}
+            onShowStats={() => setShowStats(true)}
             guestCount={guests.length}
             assignedCount={assigned.length}
             unassignedCount={unassigned.length}
@@ -447,7 +565,7 @@ export default function App() {
               onAddGuest={handleAddGuest}
               onAddGuests={handleAddGuests}
               onRemoveGuest={handleRemoveGuest}
-              onUpdateGuest={(id, updates) => { saveSnapshot(); updateGuest(id, updates); }}
+              onUpdateGuest={handleUpdateGuest}
               onAddGroup={addGroup}
               onRemoveGroup={removeGroup}
               onUpdateGroup={updateGroup}
@@ -465,12 +583,17 @@ export default function App() {
               highlightedGuestIds={highlightedGuestIds}
               tableConflicts={tableConflicts}
               venueElements={venueElements}
+              gridSnap={gridSnap}
+              backgroundImage={backgroundImage}
               onMoveTable={moveTable}
               onUpdateTable={updateTable}
               onRemoveTable={handleRemoveTable}
+              onDuplicateTable={handleDuplicateTable}
               onTableClick={handleTableClick}
               onMoveVenueElement={moveVenueElement}
               onRemoveVenueElement={removeVenueElement}
+              onToggleGridSnap={() => setGridSnap(!gridSnap)}
+              onSetBackgroundImage={setBackgroundImage}
             />
           </div>
         </div>
@@ -488,6 +611,34 @@ export default function App() {
           onAssignGuest={assignGuest}
           onUnassignGuest={unassignGuest}
           onSwapGuests={swapGuests}
+        />
+      )}
+
+      {showFindMySeat && (
+        <FindMySeat
+          tables={tables}
+          guests={guests}
+          groups={groups}
+          onClose={() => setShowFindMySeat(false)}
+        />
+      )}
+
+      {showStats && (
+        <StatsPanel
+          guests={guests}
+          tables={tables}
+          groups={groups}
+          onClose={() => setShowStats(false)}
+        />
+      )}
+
+      {showVersions && (
+        <VersionManager
+          versions={versions}
+          onSave={handleSaveVersion}
+          onLoad={handleLoadVersion}
+          onDelete={deleteVersion}
+          onClose={() => setShowVersions(false)}
         />
       )}
 

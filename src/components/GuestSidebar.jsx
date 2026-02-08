@@ -1,11 +1,19 @@
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { Search, Users, ChevronDown, ChevronRight, List, Layers } from 'lucide-react';
+import { Search, Users, ChevronDown, ChevronRight, List, Layers, Filter } from 'lucide-react';
 import GuestCard from './GuestCard';
 import GuestForm from './GuestForm';
 import CSVUploader from './CSVUploader';
 import GroupManager from './GroupManager';
 import RelationshipManager from './RelationshipManager';
+
+const RSVP_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'accepted', label: 'Accepted' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'invited', label: 'Invited' },
+  { value: 'declined', label: 'Declined' },
+];
 
 export default function GuestSidebar({
   guests,
@@ -37,6 +45,8 @@ export default function GuestSidebar({
   const [assignedCollapsed, setAssignedCollapsed] = useState(false);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'groups'
   const [filterGroupId, setFilterGroupId] = useState(null);
+  const [filterRsvp, setFilterRsvp] = useState('all');
+  const [filterTag, setFilterTag] = useState(null);
 
   const { setNodeRef, isOver } = useDroppable({
     id: 'sidebar-unassigned',
@@ -48,15 +58,24 @@ export default function GuestSidebar({
     groupMap[g.id] = g;
   }
 
+  // Collect all tags
+  const allTags = [...new Set(guests.flatMap((g) => g.tags || []))];
+
   const matchesSearch = (g) =>
     g.name.toLowerCase().includes(search.toLowerCase()) ||
-    g.party.toLowerCase().includes(search.toLowerCase());
+    (g.party || '').toLowerCase().includes(search.toLowerCase());
 
   const matchesGroupFilter = (g) =>
     !filterGroupId || g.groupId === filterGroupId;
 
+  const matchesRsvpFilter = (g) =>
+    filterRsvp === 'all' || (g.rsvp || 'pending') === filterRsvp;
+
+  const matchesTagFilter = (g) =>
+    !filterTag || (g.tags || []).includes(filterTag);
+
   const filteredUnassigned = unassigned.filter(
-    (g) => matchesSearch(g) && matchesGroupFilter(g)
+    (g) => matchesSearch(g) && matchesGroupFilter(g) && matchesRsvpFilter(g) && matchesTagFilter(g)
   );
 
   const assignedByTable = {};
@@ -161,11 +180,46 @@ export default function GuestSidebar({
             </div>
           )}
         </div>
+
+        {/* RSVP + Tag filters */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {RSVP_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setFilterRsvp(filterRsvp === f.value ? 'all' : f.value)}
+              className={`text-[10px] px-1.5 py-0.5 rounded-full cursor-pointer border transition-colors ${
+                filterRsvp === f.value && f.value !== 'all'
+                  ? 'border-gray-400 font-medium bg-gray-100'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+          {allTags.length > 0 && (
+            <>
+              <span className="text-gray-300">|</span>
+              {allTags.slice(0, 5).map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setFilterTag(filterTag === tag ? null : tag)}
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full cursor-pointer border transition-colors ${
+                    filterTag === tag
+                      ? 'border-sage font-medium bg-sage/10'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Guest Form & CSV */}
       <div className="px-4 py-3 border-b border-gray-100 space-y-2">
-        <GuestForm onAddGuest={onAddGuest} onAddGuests={onAddGuests} />
+        <GuestForm onAddGuest={onAddGuest} onAddGuests={onAddGuests} guests={guests} />
         <CSVUploader onGuestsLoaded={onAddGuests} />
       </div>
 
@@ -242,6 +296,7 @@ export default function GuestSidebar({
                           guest={guest}
                           group={groupMap[guest.groupId]}
                           onRemove={onRemoveGuest}
+                          onUpdate={onUpdateGuest}
                         />
                       ))}
                     </div>
@@ -259,6 +314,7 @@ export default function GuestSidebar({
                         key={guest.id}
                         guest={guest}
                         onRemove={onRemoveGuest}
+                        onUpdate={onUpdateGuest}
                       />
                     ))}
                   </div>
@@ -273,6 +329,7 @@ export default function GuestSidebar({
                   guest={guest}
                   group={groupMap[guest.groupId]}
                   onRemove={onRemoveGuest}
+                  onUpdate={onUpdateGuest}
                 />
               ))}
             </div>

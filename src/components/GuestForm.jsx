@@ -11,13 +11,24 @@ const RSVP_OPTIONS = [
 
 const MEAL_SUGGESTIONS = ['Chicken', 'Fish', 'Beef', 'Vegetarian', 'Vegan'];
 
-export default function GuestForm({ onAddGuest, onAddGuests }) {
+const ROLE_OPTIONS = [
+  '', 'Bride', 'Groom', 'Maid of Honor', 'Best Man',
+  'Bridesmaid', 'Groomsman', 'Flower Girl', 'Ring Bearer',
+  'Mother of Bride', 'Father of Bride', 'Mother of Groom', 'Father of Groom',
+  'Officiant', 'Usher',
+];
+
+export default function GuestForm({ onAddGuest, onAddGuests, guests = [] }) {
   const [name, setName] = useState('');
   const [party, setParty] = useState('');
   const [dietary, setDietary] = useState('');
   const [notes, setNotes] = useState('');
   const [rsvp, setRsvp] = useState('pending');
   const [meal, setMeal] = useState('');
+  const [role, setRole] = useState('');
+  const [tagInput, setTagInput] = useState('');
+  const [tags, setTags] = useState([]);
+  const [plusOneOf, setPlusOneOf] = useState('');
   const [showBulk, setShowBulk] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [showOptional, setShowOptional] = useState(false);
@@ -25,20 +36,32 @@ export default function GuestForm({ onAddGuest, onAddGuests }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onAddGuest({ name: name.trim(), party, dietary, notes, rsvp, meal });
+    onAddGuest({ name: name.trim(), party, dietary, notes, rsvp, meal, role, tags: [...tags], plusOneOf: plusOneOf || null });
     setName('');
     setParty('');
     setDietary('');
     setNotes('');
     setRsvp('pending');
     setMeal('');
+    setRole('');
+    setTags([]);
+    setTagInput('');
+    setPlusOneOf('');
+  };
+
+  const handleAddTag = (val) => {
+    const t = (val || tagInput).trim();
+    if (t && !tags.includes(t)) {
+      setTags([...tags, t]);
+    }
+    setTagInput('');
   };
 
   const handleBulkAdd = () => {
     if (!bulkText.trim()) return;
-    const guests = parseBulkText(bulkText);
-    if (guests.length > 0) {
-      onAddGuests(guests);
+    const newGuests = parseBulkText(bulkText);
+    if (newGuests.length > 0) {
+      onAddGuests(newGuests);
       setBulkText('');
       setShowBulk(false);
     }
@@ -110,6 +133,44 @@ export default function GuestForm({ onAddGuest, onAddGuests }) {
                     <option key={m} value={m} />
                   ))}
                 </datalist>
+              </div>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="input-field"
+              >
+                <option value="">Role (optional)</option>
+                {ROLE_OPTIONS.filter(Boolean).map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+              <select
+                value={plusOneOf}
+                onChange={(e) => setPlusOneOf(e.target.value)}
+                className="input-field"
+              >
+                <option value="">Plus-one of...</option>
+                {guests.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+              <div className="col-span-2">
+                <div className="flex gap-1 flex-wrap mb-1">
+                  {tags.map((t) => (
+                    <span key={t} className="text-[10px] bg-sage/20 text-sage-dark px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                      {t}
+                      <button type="button" onClick={() => setTags(tags.filter((x) => x !== t))} className="hover:text-red-500 cursor-pointer">&times;</button>
+                    </span>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); handleAddTag(); } }}
+                  placeholder="Tags (press Enter to add)"
+                  className="input-field"
+                />
               </div>
               <input
                 type="text"

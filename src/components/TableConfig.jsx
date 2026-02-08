@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Plus, RotateCcw, Zap, Heart, LayoutGrid, X, MapPin } from 'lucide-react';
+import { Plus, RotateCcw, Zap, Heart, LayoutGrid, X, MapPin, PieChart, Scale, Bookmark } from 'lucide-react';
 import TableNameGenerator from './TableNameGenerator';
 import { LAYOUT_PRESETS } from '../utils/autoLayout';
+import { SEATING_TEMPLATES } from '../utils/templates';
 import { VENUE_ELEMENT_TYPES } from '../hooks/useVenueElements';
 
 export default function TableConfig({
@@ -11,13 +12,17 @@ export default function TableConfig({
   onClearAssignments,
   onAutoSeat,
   onAutoLayout,
+  onAutoBalance,
   onAddVenueElement,
+  onApplyTemplate,
+  onShowStats,
   guestCount,
   assignedCount,
   unassignedCount,
 }) {
   const [showLayoutPicker, setShowLayoutPicker] = useState(false);
   const [showVenuePicker, setShowVenuePicker] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const hasSweetheart = tables.some((t) => t.shape === 'sweetheart');
 
   return (
@@ -84,6 +89,44 @@ export default function TableConfig({
             </div>
           )}
         </div>
+
+        {/* Templates */}
+        {onApplyTemplate && (
+          <div className="relative">
+            <button
+              onClick={() => setShowTemplatePicker(!showTemplatePicker)}
+              className="btn-secondary flex items-center gap-1 text-sm py-1.5"
+            >
+              <Bookmark size={14} />
+              Templates
+            </button>
+            {showTemplatePicker && (
+              <div className="absolute top-full left-0 mt-1 z-40 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-60">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-gray-700">Seating Templates</span>
+                  <button onClick={() => setShowTemplatePicker(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {SEATING_TEMPLATES.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        onApplyTemplate(t.id);
+                        setShowTemplatePicker(false);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-sage/10 cursor-pointer transition-colors"
+                    >
+                      <span className="text-sm font-medium text-gray-800">{t.name}</span>
+                      <span className="block text-[11px] text-gray-500">{t.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
@@ -137,6 +180,25 @@ export default function TableConfig({
           >
             <Zap size={14} />
             Auto-Seat
+          </button>
+        )}
+        {onAutoBalance && assignedCount > 0 && tables.length > 1 && (
+          <button
+            onClick={onAutoBalance}
+            className="btn-secondary flex items-center gap-1 text-sm py-1.5"
+            title="Redistribute guests evenly across tables"
+          >
+            <Scale size={14} />
+            Balance
+          </button>
+        )}
+        {onShowStats && guestCount > 0 && (
+          <button
+            onClick={onShowStats}
+            className="btn-secondary flex items-center gap-1 text-sm py-1.5"
+          >
+            <PieChart size={14} />
+            Stats
           </button>
         )}
       </div>

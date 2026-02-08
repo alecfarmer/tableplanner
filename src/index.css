@@ -21,6 +21,55 @@
     min-height: 100vh;
   }
 
+  .dark body,
+  body.dark {
+    @apply bg-gray-900 text-gray-100;
+  }
+
+  .dark .bg-white {
+    background-color: #1f2937 !important;
+  }
+
+  .dark .bg-cream {
+    background-color: #111827 !important;
+  }
+
+  .dark .text-gray-800 {
+    color: #e5e7eb !important;
+  }
+
+  .dark .border-gray-200 {
+    border-color: #374151 !important;
+  }
+
+  .dark .border-gray-100 {
+    border-color: #1f2937 !important;
+  }
+
+  .dark .bg-gray-50 {
+    background-color: #1f2937 !important;
+  }
+
+  .dark .bg-gray-100 {
+    background-color: #374151 !important;
+  }
+
+  .dark .text-gray-500 {
+    color: #9ca3af !important;
+  }
+
+  .dark .text-gray-400 {
+    color: #6b7280 !important;
+  }
+
+  .dark .text-gray-600 {
+    color: #d1d5db !important;
+  }
+
+  .dark .text-gray-700 {
+    color: #e5e7eb !important;
+  }
+
   #root {
     min-height: 100vh;
     display: flex;
@@ -53,6 +102,10 @@
     @apply w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage/50 focus:border-sage bg-white text-gray-800 text-sm;
   }
 
+  .dark .input-field {
+    @apply bg-gray-800 border-gray-600 text-gray-100;
+  }
+
   .guest-card {
     @apply bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md transition-shadow;
   }
@@ -72,6 +125,17 @@
   .seat-occupied {
     @apply border-2 border-sage bg-sage/10 text-gray-800;
   }
+
+  /* Capacity colors */
+  .capacity-ok {
+    border-color: #b7c4a1 !important;
+  }
+  .capacity-warning {
+    border-color: #eab308 !important;
+  }
+  .capacity-full {
+    border-color: #ef4444 !important;
+  }
 }
 
 @keyframes pulse-gold {
@@ -81,6 +145,14 @@
   50% {
     box-shadow: 0 0 12px 4px rgba(201,168,76,0.6);
   }
+}
+
+/* Grid snap indicator */
+.grid-snap-indicator {
+  background-image:
+    linear-gradient(to right, rgba(183,196,161,0.15) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(183,196,161,0.15) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 @media print {
@@ -94,5 +166,18 @@
 
   .print-only {
     display: block !important;
+  }
+
+  .place-card {
+    page-break-inside: avoid;
+    border: 1px dashed #ccc;
+    padding: 1rem;
+    margin: 0.5rem;
+    width: 3.5in;
+    height: 2in;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
 }
