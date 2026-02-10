@@ -16,8 +16,8 @@ export const SEATING_TEMPLATES = [
     ],
   },
   {
-    id: 'classic-wedding',
-    name: 'Classic Wedding',
+    id: 'classic-formal',
+    name: 'Classic Formal',
     description: '100 guests, 12 round tables + sweetheart',
     guests: 100,
     tables: [

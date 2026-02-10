@@ -6,9 +6,12 @@ export function getSeatPositions(shape, seats, width, height) {
   const positions = [];
 
   if (shape === 'sweetheart') {
+    const centerX = width / 2;
     const centerY = height / 2;
-    positions.push({ x: width * 0.3, y: centerY });
-    positions.push({ x: width * 0.7, y: centerY });
+    const rx = 75;
+    const gap = 7; // matches round table seat-to-edge gap
+    positions.push({ x: centerX - rx - gap, y: centerY });
+    positions.push({ x: centerX + rx + gap, y: centerY });
     return positions;
   }
 
@@ -62,11 +65,11 @@ function getTableDimensions(shape) {
   return { width: 260, height: 180 };
 }
 
-function getCapacityClass(assigned, total) {
+function getCapacityInfo(assigned, total) {
   const ratio = total > 0 ? assigned / total : 0;
-  if (ratio >= 1) return 'capacity-full';
-  if (ratio >= 0.75) return 'capacity-warning';
-  return 'capacity-ok';
+  if (ratio >= 1) return { label: 'Full', color: '#f97066', bg: '#fef2f2' };
+  if (ratio >= 0.75) return { label: 'Almost full', color: '#f59e0b', bg: '#fffbeb' };
+  return { label: null, color: '#0d9488', bg: null };
 }
 
 export default function TableShape({
@@ -101,7 +104,7 @@ export default function TableShape({
   };
 
   const assignedCount = Object.keys(guestMap).length;
-  const capacityClass = getCapacityClass(assignedCount, effectiveSeats);
+  const capacity = getCapacityInfo(assignedCount, effectiveSeats);
 
   const labelBlock = editing ? (
     <div className="flex items-center gap-1">
@@ -115,7 +118,7 @@ export default function TableShape({
       />
       <button
         onClick={handleLabelSave}
-        className="text-sage hover:text-sage-dark cursor-pointer"
+        className="text-teal hover:text-teal-dark cursor-pointer"
         onPointerDown={(e) => e.stopPropagation()}
       >
         <Check size={12} />
@@ -125,13 +128,19 @@ export default function TableShape({
     <button
       onClick={() => setEditing(true)}
       onPointerDown={(e) => e.stopPropagation()}
-      className={`text-xs font-serif font-semibold flex items-center gap-1 hover:opacity-70 cursor-pointer ${
-        isSweetheart ? 'text-gold-dark' : 'text-wine'
-      }`}
+      className="text-xs font-serif font-semibold flex items-center gap-1 hover:opacity-70 cursor-pointer text-navy"
     >
       {table.label}
-      <Edit3 size={10} />
+      <Edit3 size={10} className="text-gray-400" />
     </button>
+  );
+
+  // Shared SVG filter for soft shadow
+  const shadowFilter = (id) => (
+    <filter id={id} x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#0f172a" floodOpacity="0.08" />
+      <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#0f172a" floodOpacity="0.06" />
+    </filter>
   );
 
   return (
@@ -146,43 +155,118 @@ export default function TableShape({
     >
       {/* Table surface */}
       {isSweetheart ? (
-        <div
-          className="absolute inset-4 border-2 rounded-full flex flex-col items-center justify-center"
-          style={{
-            background: 'linear-gradient(135deg, rgba(201,168,76,0.15), rgba(245,230,224,0.5))',
-            borderColor: '#c9a84c',
-          }}
-        >
-          <Heart size={12} className="text-gold mb-0.5" fill="#c9a84c" />
-          {labelBlock}
-          <span className="text-[10px] text-gray-500 mt-0.5">
-            {assignedCount}/2
-          </span>
-        </div>
+        <>
+          <svg className="absolute inset-0" width={width} height={height}>
+            <defs>
+              {shadowFilter(`sweet-shadow-${table.id}`)}
+              <radialGradient id={`sweet-fill-${table.id}`} cx="40%" cy="35%">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="100%" stopColor="#fce7f3" />
+              </radialGradient>
+            </defs>
+            <ellipse
+              cx={width / 2} cy={height / 2}
+              rx={75} ry={42}
+              fill={`url(#sweet-fill-${table.id})`}
+              stroke="#f9a8d4" strokeWidth="1.5"
+              filter={`url(#sweet-shadow-${table.id})`}
+            />
+            <ellipse
+              cx={width / 2} cy={height / 2}
+              rx={60} ry={30}
+              fill="none" stroke="#f9a8d4" strokeWidth="0.5" opacity="0.3"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+            <Heart size={12} className="text-pink-400 mb-0.5" fill="#f472b6" />
+            {labelBlock}
+            <span className="text-[10px] text-gray-400 mt-0.5">
+              {assignedCount}/2
+            </span>
+          </div>
+        </>
       ) : table.shape === 'round' ? (
-        <div className={`absolute inset-8 bg-blush/40 border-2 border-blush-dark rounded-full flex flex-col items-center justify-center ${capacityClass}`}>
-          {labelBlock}
-          <span className="text-[10px] text-gray-500 mt-0.5">
-            {assignedCount}/{table.seats}
-          </span>
-          {table.notes && (
-            <span className="text-[8px] text-gray-400 mt-0.5 truncate max-w-[60px]" title={table.notes}>
-              {table.notes}
+        <>
+          <svg className="absolute inset-0" width={width} height={height}>
+            <defs>
+              {shadowFilter(`round-shadow-${table.id}`)}
+              <radialGradient id={`round-fill-${table.id}`} cx="40%" cy="35%">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="100%" stopColor="#f1f5f9" />
+              </radialGradient>
+            </defs>
+            <circle
+              cx={width / 2} cy={height / 2} r={width / 2 - 32}
+              fill={`url(#round-fill-${table.id})`}
+              stroke="#cbd5e1" strokeWidth="1.5"
+              filter={`url(#round-shadow-${table.id})`}
+            />
+            <circle
+              cx={width / 2} cy={height / 2} r={width / 2 - 42}
+              fill="none" stroke="#e2e8f0" strokeWidth="0.5"
+            />
+          </svg>
+          <div className="absolute inset-8 rounded-full flex flex-col items-center justify-center z-10">
+            {labelBlock}
+            <span className="text-[10px] text-gray-400 mt-0.5">
+              {assignedCount}/{table.seats}
             </span>
-          )}
-        </div>
+            {capacity.label && (
+              <span
+                className="text-[8px] font-medium mt-0.5 px-1.5 py-0.5 rounded-full"
+                style={{ color: capacity.color, backgroundColor: capacity.bg }}
+              >
+                {capacity.label}
+              </span>
+            )}
+            {table.notes && (
+              <span className="text-[8px] text-gray-400 mt-0.5 truncate max-w-[60px]" title={table.notes}>
+                {table.notes}
+              </span>
+            )}
+          </div>
+        </>
       ) : (
-        <div className={`absolute inset-6 bg-blush/40 border-2 border-blush-dark rounded-lg flex flex-col items-center justify-center ${capacityClass}`}>
-          {labelBlock}
-          <span className="text-[10px] text-gray-500 mt-0.5">
-            {assignedCount}/{table.seats}
-          </span>
-          {table.notes && (
-            <span className="text-[8px] text-gray-400 mt-0.5 truncate max-w-[80px]" title={table.notes}>
-              {table.notes}
+        <>
+          <svg className="absolute inset-0" width={width} height={height}>
+            <defs>
+              {shadowFilter(`rect-shadow-${table.id}`)}
+              <linearGradient id={`rect-fill-${table.id}`} x1="0" y1="0" x2="0.3" y2="1">
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="100%" stopColor="#f1f5f9" />
+              </linearGradient>
+            </defs>
+            <rect
+              x={24} y={24} width={width - 48} height={height - 48} rx={12}
+              fill={`url(#rect-fill-${table.id})`}
+              stroke="#cbd5e1" strokeWidth="1.5"
+              filter={`url(#rect-shadow-${table.id})`}
+            />
+            <rect
+              x={34} y={34} width={width - 68} height={height - 68} rx={8}
+              fill="none" stroke="#e2e8f0" strokeWidth="0.5"
+            />
+          </svg>
+          <div className="absolute inset-6 rounded-lg flex flex-col items-center justify-center z-10">
+            {labelBlock}
+            <span className="text-[10px] text-gray-400 mt-0.5">
+              {assignedCount}/{table.seats}
             </span>
-          )}
-        </div>
+            {capacity.label && (
+              <span
+                className="text-[8px] font-medium mt-0.5 px-1.5 py-0.5 rounded-full"
+                style={{ color: capacity.color, backgroundColor: capacity.bg }}
+              >
+                {capacity.label}
+              </span>
+            )}
+            {table.notes && (
+              <span className="text-[8px] text-gray-400 mt-0.5 truncate max-w-[80px]" title={table.notes}>
+                {table.notes}
+              </span>
+            )}
+          </div>
+        </>
       )}
 
       {/* Table controls */}
@@ -217,7 +301,7 @@ export default function TableShape({
         </button>
       </div>
 
-      {/* Settings popup (not for sweetheart) */}
+      {/* Settings popup */}
       {showSettings && !isSweetheart && (
         <div
           className="absolute -top-2 right-10 z-20 bg-white shadow-lg rounded-lg border border-gray-200 p-3 w-52"

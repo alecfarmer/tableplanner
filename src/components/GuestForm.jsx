@@ -12,10 +12,9 @@ const RSVP_OPTIONS = [
 const MEAL_SUGGESTIONS = ['Chicken', 'Fish', 'Beef', 'Vegetarian', 'Vegan'];
 
 const ROLE_OPTIONS = [
-  '', 'Bride', 'Groom', 'Maid of Honor', 'Best Man',
-  'Bridesmaid', 'Groomsman', 'Flower Girl', 'Ring Bearer',
-  'Mother of Bride', 'Father of Bride', 'Mother of Groom', 'Father of Groom',
-  'Officiant', 'Usher',
+  '', 'Host', 'Co-Host', 'VIP', 'Speaker', 'Organizer',
+  'Bride', 'Groom', 'Maid of Honor', 'Best Man',
+  'Bridesmaid', 'Groomsman', 'Family', 'Plus One',
 ];
 
 export default function GuestForm({ onAddGuest, onAddGuests, guests = [] }) {

@@ -48,7 +48,7 @@ export function generatePrintHTML(tables, guests) {
     const tableGuests = assignedByTable[table.id] || [];
     tableGuests.sort((a, b) => (a.seatIndex ?? 0) - (b.seatIndex ?? 0));
     html += `<div style="break-inside:avoid;margin-bottom:24px;padding:16px;border:1px solid #e5e7eb;border-radius:8px;">`;
-    html += `<h3 style="font-family:Georgia,serif;font-size:18px;margin:0 0 12px 0;color:#722f37;">${table.label}</h3>`;
+    html += `<h3 style="font-family:Georgia,serif;font-size:18px;margin:0 0 12px 0;color:#0d9488;">${table.label}</h3>`;
     html += `<p style="font-size:12px;color:#6b7280;margin:0 0 8px 0;">${table.shape === 'round' ? 'Round' : 'Rectangular'} \u2022 ${table.seats} seats</p>`;
     if (tableGuests.length === 0) {
       html += `<p style="color:#9ca3af;font-style:italic;">No guests assigned</p>`;

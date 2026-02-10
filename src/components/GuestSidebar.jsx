@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { Search, Users, ChevronDown, ChevronRight, List, Layers, Filter } from 'lucide-react';
+import { Search, Users, List, Layers, UserPlus, Upload, UsersRound, Link2, CheckCircle2, ChevronUp, X } from 'lucide-react';
 import GuestCard from './GuestCard';
 import GuestForm from './GuestForm';
 import CSVUploader from './CSVUploader';
 import GroupManager from './GroupManager';
 import RelationshipManager from './RelationshipManager';
+import AccordionSection from './AccordionSection';
 
 const RSVP_FILTERS = [
   { value: 'all', label: 'All' },
@@ -28,7 +29,7 @@ export default function GuestSidebar({
   onAddGuest,
   onAddGuests,
   onRemoveGuest,
-  onUpdateGuest,
+  onEditGuest,
   onAddGroup,
   onRemoveGroup,
   onUpdateGroup,
@@ -42,8 +43,7 @@ export default function GuestSidebar({
 }) {
   const search = searchQuery ?? '';
   const setSearch = onSearchChange ?? (() => {});
-  const [assignedCollapsed, setAssignedCollapsed] = useState(false);
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'groups'
+  const [viewMode, setViewMode] = useState('list');
   const [filterGroupId, setFilterGroupId] = useState(null);
   const [filterRsvp, setFilterRsvp] = useState('all');
   const [filterTag, setFilterTag] = useState(null);
@@ -58,7 +58,6 @@ export default function GuestSidebar({
     groupMap[g.id] = g;
   }
 
-  // Collect all tags
   const allTags = [...new Set(guests.flatMap((g) => g.tags || []))];
 
   const matchesSearch = (g) =>
@@ -86,7 +85,6 @@ export default function GuestSidebar({
     assignedByTable[guest.tableId].push(guest);
   }
 
-  // Group unassigned guests by groupId for group view
   const unassignedByGroup = {};
   const unassignedUngrouped = [];
   for (const guest of filteredUnassigned) {
@@ -100,19 +98,29 @@ export default function GuestSidebar({
     }
   }
 
-  return (
-    <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-full no-print">
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const sidebarContent = (
+    <>
       {/* Header */}
       <div className="p-4 border-b border-gray-100">
-        <h2 className="font-serif text-lg text-wine font-semibold mb-1">
-          Guest List
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-serif text-lg text-navy font-semibold mb-1">
+            Guest List
+          </h2>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="md:hidden text-gray-400 hover:text-gray-600 cursor-pointer p-1"
+          >
+            <X size={20} />
+          </button>
+        </div>
         <p className="text-sm text-gray-500">
           {assigned.length} of {guests.length} guests assigned
         </p>
         <div className="mt-2 w-full bg-gray-100 rounded-full h-2">
           <div
-            className="bg-sage rounded-full h-2 transition-all duration-300"
+            className="bg-teal rounded-full h-2 transition-all duration-300"
             style={{
               width: guests.length > 0
                 ? `${(assigned.length / guests.length) * 100}%`
@@ -121,9 +129,51 @@ export default function GuestSidebar({
           />
         </div>
       </div>
+    </>
+  );
 
-      {/* Search + View Toggle */}
-      <div className="px-4 pt-3 space-y-2">
+  return (
+    <>
+      {/* Mobile toggle button */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="md:hidden fixed bottom-20 left-4 z-30 bg-teal text-white shadow-lg rounded-full p-3 no-print"
+        title="Guest List"
+      >
+        <Users size={20} />
+        {unassigned.length > 0 && (
+          <span className="absolute -top-1 -right-1 bg-coral text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+            {unassigned.length}
+          </span>
+        )}
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/30 z-40"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar — desktop: always visible, mobile: bottom sheet */}
+      <div className={`
+        no-print overflow-x-hidden bg-white flex flex-col
+        md:w-80 md:border-r md:border-gray-200 md:h-full md:relative md:z-auto
+        fixed inset-x-0 bottom-0 z-50 max-h-[85vh] rounded-t-2xl shadow-2xl
+        transition-transform duration-300 ease-out
+        md:translate-y-0 md:rounded-none md:shadow-none
+        ${mobileOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
+      `}>
+        {/* Mobile drag handle */}
+        <div className="md:hidden flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+        </div>
+
+        {sidebarContent}
+
+      {/* Search */}
+      <div className="px-4 pt-3 pb-2">
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -134,214 +184,235 @@ export default function GuestSidebar({
             className="input-field pl-9"
           />
         </div>
-
-        <div className="flex items-center gap-1">
-          <div className="flex bg-gray-100 rounded-lg p-0.5">
-            <button
-              onClick={() => { setViewMode('list'); setFilterGroupId(null); }}
-              className={`text-xs px-2 py-1 rounded-md flex items-center gap-1 cursor-pointer transition-colors ${
-                viewMode === 'list' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <List size={12} />
-              All
-            </button>
-            <button
-              onClick={() => setViewMode('groups')}
-              className={`text-xs px-2 py-1 rounded-md flex items-center gap-1 cursor-pointer transition-colors ${
-                viewMode === 'groups' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <Layers size={12} />
-              By Group
-            </button>
-          </div>
-
-          {/* Group filter chips */}
-          {viewMode === 'list' && groups.length > 0 && (
-            <div className="flex gap-1 overflow-x-auto flex-1 ml-1">
-              {groups.map((group) => (
-                <button
-                  key={group.id}
-                  onClick={() =>
-                    setFilterGroupId(filterGroupId === group.id ? null : group.id)
-                  }
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap cursor-pointer border transition-colors ${
-                    filterGroupId === group.id
-                      ? 'border-gray-400 font-medium'
-                      : 'border-transparent opacity-70 hover:opacity-100'
-                  }`}
-                  style={{ backgroundColor: group.color + '40', color: '#555' }}
-                  title={group.name}
-                >
-                  {group.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* RSVP + Tag filters */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {RSVP_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setFilterRsvp(filterRsvp === f.value ? 'all' : f.value)}
-              className={`text-[10px] px-1.5 py-0.5 rounded-full cursor-pointer border transition-colors ${
-                filterRsvp === f.value && f.value !== 'all'
-                  ? 'border-gray-400 font-medium bg-gray-100'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-          {allTags.length > 0 && (
-            <>
-              <span className="text-gray-300">|</span>
-              {allTags.slice(0, 5).map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => setFilterTag(filterTag === tag ? null : tag)}
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full cursor-pointer border transition-colors ${
-                    filterTag === tag
-                      ? 'border-sage font-medium bg-sage/10'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </>
-          )}
-        </div>
       </div>
 
-      {/* Guest Form & CSV */}
-      <div className="px-4 py-3 border-b border-gray-100 space-y-2">
-        <GuestForm onAddGuest={onAddGuest} onAddGuests={onAddGuests} guests={guests} />
-        <CSVUploader onGuestsLoaded={onAddGuests} />
-      </div>
-
-      {/* Group Manager */}
-      <GroupManager
-        groups={groups}
-        guests={guests}
-        onAddGroup={onAddGroup}
-        onRemoveGroup={onRemoveGroup}
-        onUpdateGroup={onUpdateGroup}
-        onAutoGroup={onAutoGroup}
-        onSetGuestGroup={onSetGuestGroup}
-        onClearGuestGroups={onClearGuestGroups}
-        onClearAllGroups={onClearAllGroups}
-        groupColors={groupColors}
-      />
-
-      {/* Seating Rules */}
-      <RelationshipManager
-        relationships={relationships}
-        guests={guests}
-        onAddRelationship={onAddRelationship}
-        onRemoveRelationship={onRemoveRelationship}
-      />
-
-      {/* Guest Lists */}
+      {/* Scrollable accordion sections */}
       <div className="flex-1 overflow-y-auto">
-        {/* Unassigned */}
-        <div
-          ref={setNodeRef}
-          className={`p-4 min-h-[100px] ${isOver ? 'bg-sage/10' : ''}`}
+        {/* Add Guests */}
+        <AccordionSection
+          title="Add Guests"
+          icon={UserPlus}
+          defaultOpen={guests.length === 0}
         >
-          <div className="flex items-center gap-2 mb-2">
-            <Users size={14} className="text-gray-500" />
-            <h3 className="text-sm font-semibold text-gray-600">
-              Unassigned ({filteredUnassigned.length})
-            </h3>
+          <div className="space-y-2">
+            <GuestForm onAddGuest={onAddGuest} onAddGuests={onAddGuests} guests={guests} />
+            <CSVUploader onGuestsLoaded={onAddGuests} />
           </div>
+        </AccordionSection>
 
-          {filteredUnassigned.length === 0 && guests.length === 0 && (
-            <div className="text-center py-6 text-gray-400">
-              <Users size={32} className="mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No guests yet</p>
-              <p className="text-xs mt-1">Add guests above or import a CSV</p>
-            </div>
-          )}
+        {/* Groups */}
+        <AccordionSection
+          title="Groups"
+          icon={UsersRound}
+          count={groups.length}
+        >
+          <GroupManager
+            groups={groups}
+            guests={guests}
+            onAddGroup={onAddGroup}
+            onRemoveGroup={onRemoveGroup}
+            onUpdateGroup={onUpdateGroup}
+            onAutoGroup={onAutoGroup}
+            onSetGuestGroup={onSetGuestGroup}
+            onClearGuestGroups={onClearGuestGroups}
+            onClearAllGroups={onClearAllGroups}
+            groupColors={groupColors}
+            embedded
+          />
+        </AccordionSection>
 
-          {filteredUnassigned.length === 0 && guests.length > 0 && unassigned.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-4">
-              All guests are assigned!
-            </p>
-          )}
+        {/* Seating Rules */}
+        <AccordionSection
+          title="Seating Rules"
+          icon={Link2}
+          count={relationships.length}
+        >
+          <RelationshipManager
+            relationships={relationships}
+            guests={guests}
+            onAddRelationship={onAddRelationship}
+            onRemoveRelationship={onRemoveRelationship}
+            embedded
+          />
+        </AccordionSection>
 
-          {viewMode === 'groups' ? (
-            <div className="space-y-3">
-              {/* Grouped guests */}
-              {groups
-                .filter((group) => unassignedByGroup[group.id]?.length > 0)
-                .map((group) => (
-                  <div key={group.id}>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: group.color }}
-                      />
-                      <span className="text-xs font-medium text-gray-600">
-                        {group.name} ({unassignedByGroup[group.id].length})
-                      </span>
-                    </div>
-                    <div className="space-y-1 ml-4">
-                      {unassignedByGroup[group.id].map((guest) => (
-                        <GuestCard
-                          key={guest.id}
-                          guest={guest}
-                          group={groupMap[guest.groupId]}
-                          onRemove={onRemoveGuest}
-                          onUpdate={onUpdateGuest}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              {/* Ungrouped guests */}
-              {unassignedUngrouped.length > 0 && (
-                <div>
-                  <span className="text-xs font-medium text-gray-400 mb-1 block">
-                    Ungrouped ({unassignedUngrouped.length})
-                  </span>
-                  <div className="space-y-1">
-                    {unassignedUngrouped.map((guest) => (
-                      <GuestCard
-                        key={guest.id}
-                        guest={guest}
-                        onRemove={onRemoveGuest}
-                        onUpdate={onUpdateGuest}
-                      />
-                    ))}
-                  </div>
+        {/* Unassigned Guests */}
+        <AccordionSection
+          title="Unassigned"
+          icon={Users}
+          count={filteredUnassigned.length}
+          defaultOpen={true}
+        >
+          <div className="space-y-2">
+            {/* View toggle + filters */}
+            <div className="flex items-center gap-1">
+              <div className="flex bg-gray-100 rounded-lg p-0.5">
+                <button
+                  onClick={() => { setViewMode('list'); setFilterGroupId(null); }}
+                  className={`text-xs px-2 py-1 rounded-md flex items-center gap-1 cursor-pointer transition-colors ${
+                    viewMode === 'list' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <List size={12} />
+                  All
+                </button>
+                <button
+                  onClick={() => setViewMode('groups')}
+                  className={`text-xs px-2 py-1 rounded-md flex items-center gap-1 cursor-pointer transition-colors ${
+                    viewMode === 'groups' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Layers size={12} />
+                  By Group
+                </button>
+              </div>
+
+              {viewMode === 'list' && groups.length > 0 && (
+                <div className="flex gap-1 overflow-x-auto flex-1 ml-1">
+                  {groups.map((group) => (
+                    <button
+                      key={group.id}
+                      onClick={() =>
+                        setFilterGroupId(filterGroupId === group.id ? null : group.id)
+                      }
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap cursor-pointer border transition-colors ${
+                        filterGroupId === group.id
+                          ? 'border-gray-400 font-medium'
+                          : 'border-transparent opacity-70 hover:opacity-100'
+                      }`}
+                      style={{ backgroundColor: group.color + '40', color: '#555' }}
+                      title={group.name}
+                    >
+                      {group.name}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
-          ) : (
-            <div className="space-y-1.5">
-              {filteredUnassigned.map((guest) => (
-                <GuestCard
-                  key={guest.id}
-                  guest={guest}
-                  group={groupMap[guest.groupId]}
-                  onRemove={onRemoveGuest}
-                  onUpdate={onUpdateGuest}
-                />
+
+            {/* RSVP + Tag filters */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {RSVP_FILTERS.map((f) => (
+                <button
+                  key={f.value}
+                  onClick={() => setFilterRsvp(filterRsvp === f.value ? 'all' : f.value)}
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full cursor-pointer border transition-colors ${
+                    filterRsvp === f.value && f.value !== 'all'
+                      ? 'border-gray-400 font-medium bg-gray-100'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {f.label}
+                </button>
               ))}
+              {allTags.length > 0 && (
+                <>
+                  <span className="text-gray-300">|</span>
+                  {allTags.slice(0, 5).map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => setFilterTag(filterTag === tag ? null : tag)}
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full cursor-pointer border transition-colors ${
+                        filterTag === tag
+                          ? 'border-teal font-medium bg-teal/10'
+                          : 'border-transparent text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </>
+              )}
             </div>
-          )}
-        </div>
+
+            {/* Guest list */}
+            <div
+              ref={setNodeRef}
+              className={`min-h-[60px] rounded-lg transition-colors ${isOver ? 'bg-teal/10' : ''}`}
+            >
+              {filteredUnassigned.length === 0 && guests.length === 0 && (
+                <div className="text-center py-6 text-gray-400">
+                  <Users size={32} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No guests yet</p>
+                  <p className="text-xs mt-1">Add guests above or import a CSV</p>
+                </div>
+              )}
+
+              {filteredUnassigned.length === 0 && guests.length > 0 && unassigned.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4">
+                  All guests are assigned!
+                </p>
+              )}
+
+              {viewMode === 'groups' ? (
+                <div className="space-y-3">
+                  {groups
+                    .filter((group) => unassignedByGroup[group.id]?.length > 0)
+                    .map((group) => (
+                      <div key={group.id}>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <div
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: group.color }}
+                          />
+                          <span className="text-xs font-medium text-gray-600">
+                            {group.name} ({unassignedByGroup[group.id].length})
+                          </span>
+                        </div>
+                        <div className="space-y-1 ml-4">
+                          {unassignedByGroup[group.id].map((guest) => (
+                            <GuestCard
+                              key={guest.id}
+                              guest={guest}
+                              group={groupMap[guest.groupId]}
+                              onRemove={onRemoveGuest}
+                              onEdit={onEditGuest}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  {unassignedUngrouped.length > 0 && (
+                    <div>
+                      <span className="text-xs font-medium text-gray-400 mb-1 block">
+                        Ungrouped ({unassignedUngrouped.length})
+                      </span>
+                      <div className="space-y-1">
+                        {unassignedUngrouped.map((guest) => (
+                          <GuestCard
+                            key={guest.id}
+                            guest={guest}
+                            onRemove={onRemoveGuest}
+                            onEdit={onEditGuest}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {filteredUnassigned.map((guest) => (
+                    <GuestCard
+                      key={guest.id}
+                      guest={guest}
+                      group={groupMap[guest.groupId]}
+                      onRemove={onRemoveGuest}
+                      onEdit={onEditGuest}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </AccordionSection>
 
         {/* Search results for assigned guests */}
         {search.trim() && highlightedGuestIds && highlightedGuestIds.size > 0 && (
-          <div className="p-4 border-t border-gray-100 bg-gold/5">
+          <div className="p-4 border-b border-gray-100 bg-amber/5">
             <div className="flex items-center gap-2 mb-2">
-              <Search size={14} className="text-gold" />
-              <h3 className="text-sm font-semibold text-gold-dark">
+              <Search size={14} className="text-amber" />
+              <h3 className="text-sm font-semibold text-amber-700">
                 Found at tables ({highlightedGuestIds.size})
               </h3>
             </div>
@@ -353,7 +424,7 @@ export default function GuestSidebar({
                   return (
                     <div
                       key={guest.id}
-                      className="flex items-center gap-2 bg-white rounded-lg px-2.5 py-1.5 border border-gold/30 shadow-sm"
+                      className="flex items-center gap-2 bg-white rounded-lg px-2.5 py-1.5 border border-amber/30 shadow-sm"
                     >
                       {groupMap[guest.groupId] && (
                         <div
@@ -364,7 +435,7 @@ export default function GuestSidebar({
                       <span className="text-sm text-gray-800 font-medium truncate flex-1">
                         {guest.name}
                       </span>
-                      <span className="text-[11px] text-gold-dark bg-gold/10 px-1.5 py-0.5 rounded-full shrink-0">
+                      <span className="text-[11px] text-amber-700 bg-amber/10 px-1.5 py-0.5 rounded-full shrink-0">
                         {table?.label || 'Table'} &middot; Seat {(guest.seatIndex ?? 0) + 1}
                       </span>
                     </div>
@@ -374,46 +445,37 @@ export default function GuestSidebar({
           </div>
         )}
 
-        {/* Assigned */}
+        {/* Assigned Guests */}
         {assigned.length > 0 && (
-          <div className="p-4 border-t border-gray-100">
-            <button
-              onClick={() => setAssignedCollapsed(!assignedCollapsed)}
-              className="flex items-center gap-2 mb-2 w-full text-left cursor-pointer"
-            >
-              {assignedCollapsed ? (
-                <ChevronRight size={14} className="text-gray-500" />
-              ) : (
-                <ChevronDown size={14} className="text-gray-500" />
-              )}
-              <h3 className="text-sm font-semibold text-gray-600">
-                Assigned ({assigned.length})
-              </h3>
-            </button>
-
-            {!assignedCollapsed &&
-              tables
-                .filter((t) => assignedByTable[t.id]?.length > 0)
-                .map((table) => (
-                  <div key={table.id} className="mb-3">
-                    <p className="text-xs font-medium text-wine mb-1">
-                      {table.label}
-                    </p>
-                    <div className="space-y-1">
-                      {assignedByTable[table.id].map((guest) => (
-                        <GuestCard
-                          key={guest.id}
-                          guest={guest}
-                          group={groupMap[guest.groupId]}
-                          compact
-                        />
-                      ))}
-                    </div>
+          <AccordionSection
+            title="Assigned"
+            icon={CheckCircle2}
+            count={assigned.length}
+          >
+            {tables
+              .filter((t) => assignedByTable[t.id]?.length > 0)
+              .map((table) => (
+                <div key={table.id} className="mb-3 last:mb-0">
+                  <p className="text-xs font-medium text-teal mb-1">
+                    {table.label}
+                  </p>
+                  <div className="space-y-1">
+                    {assignedByTable[table.id].map((guest) => (
+                      <GuestCard
+                        key={guest.id}
+                        guest={guest}
+                        group={groupMap[guest.groupId]}
+                        onEdit={onEditGuest}
+                        compact
+                      />
+                    ))}
                   </div>
-                ))}
-          </div>
+                </div>
+              ))}
+          </AccordionSection>
         )}
       </div>
     </div>
+    </>
   );
 }

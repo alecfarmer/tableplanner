@@ -127,7 +127,7 @@ export default function StatsPanel({ guests, tables, groups, onClose }) {
 
           {/* Roles */}
           {Object.keys(roleCounts).length > 0 && (
-            <Section title="Wedding Party">
+            <Section title="Event Roles">
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(roleCounts).map(([role, count]) => (
                   <span key={role} className="text-xs bg-wine/10 text-wine px-2 py-1 rounded-full">

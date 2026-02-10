@@ -2,17 +2,21 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { DndContext, DragOverlay, pointerWithin, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
-import { Heart, Undo2, Redo2, Share2, Check, Moon, Sun, Clock, Search as SearchIcon, PieChart } from 'lucide-react';
+import { Heart, GripVertical, Download, Upload, Printer, LogIn } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import GuestSidebar from './components/GuestSidebar';
 import TableCanvas from './components/TableCanvas';
-import TableConfig from './components/TableConfig';
+import FloatingToolbar from './components/FloatingToolbar';
 import TableDetailModal from './components/TableDetailModal';
+import GuestDetailModal from './components/GuestDetailModal';
+import TableNameGenerator from './components/TableNameGenerator';
 import ExportImport from './components/ExportImport';
 import PrintView from './components/PrintView';
 import FindMySeat from './components/FindMySeat';
 import StatsPanel from './components/StatsPanel';
 import VersionManager from './components/VersionManager';
+import ConfirmDialog from './components/ConfirmDialog';
 import { useGuests } from './hooks/useGuests';
 import { useTables } from './hooks/useTables';
 import { useGroups } from './hooks/useGroups';
@@ -21,13 +25,16 @@ import { useVenueElements } from './hooks/useVenueElements';
 import { useHistory } from './hooks/useHistory';
 import { useVersions } from './hooks/useVersions';
 import { useSeatingPersistence } from './hooks/useSeatingPersistence';
+import { useSupabasePersistence } from './hooks/useSupabasePersistence';
+import { useAuth } from './hooks/useAuth';
 import { computeAutoSeat } from './utils/autoSeat';
 import { computeAutoLayout } from './utils/autoLayout';
 import { computeAutoBalance } from './utils/autoBalance';
 import { applyTemplate } from './utils/templates';
 import { generateShareUrl, loadFromShareUrl, clearShareHash } from './utils/shareLink';
+import { generateSingleTableName } from './utils/aiTableNames';
 
-export default function App() {
+export default function App({ eventId = null }) {
   const {
     guests,
     setGuests,
@@ -90,7 +97,7 @@ export default function App() {
   const [shareUrl, setShareUrl] = useState(null);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('wedding-dark-mode') === 'true';
+      return localStorage.getItem('tp-dark-mode') === 'true';
     }
     return false;
   });
@@ -99,14 +106,46 @@ export default function App() {
   const [showFindMySeat, setShowFindMySeat] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
+  const [showAiNames, setShowAiNames] = useState(false);
+  const [editingGuestId, setEditingGuestId] = useState(null);
+  const [aiTheme, setAiTheme] = useState(() =>
+    localStorage.getItem('tp-ai-theme') || ''
+  );
+  const [activeDragGuest, setActiveDragGuest] = useState(null);
+  const [dragPointer, setDragPointer] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null);
+
+  // Track pointer position during drag for custom overlay
+  useEffect(() => {
+    if (!activeDragGuest) {
+      setDragPointer(null);
+      return;
+    }
+    const onPointerMove = (e) => setDragPointer({ x: e.clientX, y: e.clientY });
+    window.addEventListener('pointermove', onPointerMove);
+    return () => window.removeEventListener('pointermove', onPointerMove);
+  }, [activeDragGuest]);
 
   // Dark mode
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
-    localStorage.setItem('wedding-dark-mode', darkMode);
+    localStorage.setItem('tp-dark-mode', darkMode);
   }, [darkMode]);
 
-  useSeatingPersistence(guests, tables, groups, setGuests, setTables, setGroups, relationships, setRelationships, venueElements, setVenueElements);
+  const { user } = useAuth();
+
+  // Dual-mode persistence: localStorage for anonymous, Supabase for logged-in with eventId
+  useSeatingPersistence(
+    !eventId ? guests : [], !eventId ? tables : [], !eventId ? groups : [],
+    !eventId ? setGuests : () => {}, !eventId ? setTables : () => {}, !eventId ? setGroups : () => {},
+    !eventId ? relationships : [], !eventId ? setRelationships : () => {},
+    !eventId ? venueElements : [], !eventId ? setVenueElements : () => {}
+  );
+  useSupabasePersistence(
+    eventId,
+    guests, tables, groups, relationships, venueElements,
+    setGuests, setTables, setGroups, setRelationships, setVenueElements
+  );
 
   // Load from share URL on mount
   useEffect(() => {
@@ -163,6 +202,8 @@ export default function App() {
         setShowFindMySeat(false);
         setShowStats(false);
         setShowVersions(false);
+        setShowAiNames(false);
+        setEditingGuestId(null);
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         // Don't prevent default - let browser handle it or open Find My Seat
@@ -212,21 +253,47 @@ export default function App() {
 
   const handleRemoveTable = useCallback(
     (tableId) => {
-      saveSnapshot();
+      const table = tables.find((t) => t.id === tableId);
       const tableGuests = guests.filter((g) => g.tableId === tableId);
-      for (const g of tableGuests) {
-        unassignGuest(g.id);
-      }
-      removeTable(tableId);
-      toast.success('Table removed');
+      setConfirmAction({
+        title: `Delete ${table?.label || 'table'}?`,
+        message: tableGuests.length > 0
+          ? `This will also unassign ${tableGuests.length} guest${tableGuests.length > 1 ? 's' : ''}.`
+          : 'This table will be permanently removed.',
+        confirmLabel: 'Delete',
+        action: () => {
+          saveSnapshot();
+          for (const g of tableGuests) {
+            unassignGuest(g.id);
+          }
+          removeTable(tableId);
+          toast.success('Table removed');
+        },
+      });
     },
-    [guests, unassignGuest, removeTable, saveSnapshot]
+    [guests, tables, unassignGuest, removeTable, saveSnapshot]
   );
+
+  const handleSaveAiTheme = useCallback((theme) => {
+    setAiTheme(theme);
+    localStorage.setItem('tp-ai-theme', theme);
+  }, []);
+
+  // Auto-generate an AI name for a newly added table
+  const autoNameTable = useCallback(async (tableId, currentTables) => {
+    const existingNames = currentTables.map((t) => t.label);
+    try {
+      const name = await generateSingleTableName(aiTheme, existingNames);
+      updateTable(tableId, { label: name });
+    } catch {
+      // Silently fall back to default name
+    }
+  }, [aiTheme, updateTable]);
 
   const handleDuplicateTable = useCallback(
     (tableId) => {
       saveSnapshot();
-      duplicateTable(tableId);
+      const newId = duplicateTable(tableId);
       toast.success('Table duplicated');
     },
     [duplicateTable, saveSnapshot]
@@ -389,8 +456,23 @@ export default function App() {
     toast.success(`Loaded version "${version.name}"`);
   }, [saveSnapshot, restoreState]);
 
+  const handleDragStart = useCallback((event) => {
+    const { active } = event;
+    if (active.data.current?.type === 'guest') {
+      setActiveDragGuest(active.data.current.guest);
+      if (event.activatorEvent) {
+        setDragPointer({ x: event.activatorEvent.clientX, y: event.activatorEvent.clientY });
+      }
+    }
+  }, []);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveDragGuest(null);
+  }, []);
+
   const handleDragEnd = useCallback(
     (event) => {
+      setActiveDragGuest(null);
       const { active, over } = event;
       if (!over || !active) return;
 
@@ -446,18 +528,19 @@ export default function App() {
       <DndContext
         sensors={sensors}
         collisionDetection={pointerWithin}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
         <div className="flex flex-col h-screen">
-          {/* Header */}
-          <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between no-print">
+          {/* Minimal Top Bar */}
+          <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 px-5 py-2 flex items-center justify-between no-print">
             <div className="flex items-center gap-2">
-              <Heart size={20} className="text-wine" fill="#722f37" />
-              <h1 className="font-serif text-xl font-bold text-wine">
+              <Heart size={18} className="text-teal" fill="#0d9488" />
+              <h1 className="font-serif text-lg font-bold text-navy">
                 Seating Planner
               </h1>
-              {/* RSVP Stats */}
-              <div className="hidden sm:flex items-center gap-2 ml-4 text-[11px]">
+              <div className="hidden sm:flex items-center gap-2 ml-3 text-[11px]">
                 <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">{rsvpStats.accepted} accepted</span>
                 <span className="bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full">{rsvpStats.pending} pending</span>
                 {rsvpStats.declined > 0 && (
@@ -465,63 +548,24 @@ export default function App() {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {/* Dark mode toggle */}
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="p-1.5 rounded hover:bg-gray-100 text-gray-500 cursor-pointer transition-colors"
-                title={darkMode ? 'Light mode' : 'Dark mode'}
-              >
-                {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
-              {/* Find My Seat */}
-              <button
-                onClick={() => setShowFindMySeat(true)}
-                className="p-1.5 rounded hover:bg-gray-100 text-gray-500 cursor-pointer transition-colors"
-                title="Find My Seat"
-              >
-                <SearchIcon size={16} />
-              </button>
-              {/* Versions */}
-              <button
-                onClick={() => setShowVersions(true)}
-                className="p-1.5 rounded hover:bg-gray-100 text-gray-500 cursor-pointer transition-colors"
-                title="Saved Versions"
-              >
-                <Clock size={16} />
-              </button>
-              {/* Undo/Redo */}
-              <div className="flex items-center gap-0.5 mr-1">
-                <button
-                  onClick={handleUndo}
-                  disabled={!canUndo}
-                  className="p-1.5 rounded hover:bg-gray-100 text-gray-500 disabled:text-gray-300 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                  title="Undo (Ctrl+Z)"
+            <div className="flex items-center gap-3">
+              {!user && !eventId && guests.length > 0 && (
+                <Link
+                  to="/auth?redirect=/app"
+                  className="hidden sm:flex items-center gap-1.5 text-xs text-teal font-medium hover:text-teal-dark transition-colors"
                 >
-                  <Undo2 size={16} />
-                </button>
-                <button
-                  onClick={handleRedo}
-                  disabled={!canRedo}
-                  className="p-1.5 rounded hover:bg-gray-100 text-gray-500 disabled:text-gray-300 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                  title="Redo (Ctrl+Y)"
+                  <LogIn size={14} />
+                  Save progress
+                </Link>
+              )}
+              {user && !eventId && (
+                <Link
+                  to="/events"
+                  className="text-xs text-teal font-medium hover:text-teal-dark transition-colors"
                 >
-                  <Redo2 size={16} />
-                </button>
-              </div>
-              {/* Share */}
-              <button
-                onClick={handleShare}
-                className={`flex items-center gap-1 text-sm py-1.5 px-3 rounded-lg border transition-colors cursor-pointer ${
-                  shareUrl
-                    ? 'border-green-300 bg-green-50 text-green-700'
-                    : 'border-gray-200 hover:bg-gray-50 text-gray-600'
-                }`}
-                title="Copy shareable link"
-              >
-                {shareUrl ? <Check size={14} /> : <Share2 size={14} />}
-                {shareUrl ? 'Copied!' : 'Share'}
-              </button>
+                  My Events
+                </Link>
+              )}
               <ExportImport
                 guests={guests}
                 tables={tables}
@@ -533,25 +577,8 @@ export default function App() {
             </div>
           </header>
 
-          {/* Table Config Bar */}
-          <TableConfig
-            tables={tables}
-            onAddTable={(overrides) => { saveSnapshot(); addTable(overrides); }}
-            onUpdateTable={updateTable}
-            onClearAssignments={() => { saveSnapshot(); clearAllAssignments(); }}
-            onAutoSeat={handleAutoSeat}
-            onAutoLayout={handleAutoLayout}
-            onAutoBalance={handleAutoBalance}
-            onAddVenueElement={(typeId) => { saveSnapshot(); addVenueElement(typeId); }}
-            onApplyTemplate={handleApplyTemplate}
-            onShowStats={() => setShowStats(true)}
-            guestCount={guests.length}
-            assignedCount={assigned.length}
-            unassignedCount={unassigned.length}
-          />
-
           {/* Main Content */}
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 overflow-hidden relative">
             <GuestSidebar
               guests={guests}
               unassigned={unassigned}
@@ -565,7 +592,7 @@ export default function App() {
               onAddGuest={handleAddGuest}
               onAddGuests={handleAddGuests}
               onRemoveGuest={handleRemoveGuest}
-              onUpdateGuest={handleUpdateGuest}
+              onEditGuest={setEditingGuestId}
               onAddGroup={addGroup}
               onRemoveGroup={removeGroup}
               onUpdateGroup={updateGroup}
@@ -595,11 +622,65 @@ export default function App() {
               onToggleGridSnap={() => setGridSnap(!gridSnap)}
               onSetBackgroundImage={setBackgroundImage}
             />
+            <FloatingToolbar
+              tables={tables}
+              onAddTable={(overrides) => {
+                saveSnapshot();
+                const newId = addTable(overrides);
+                if (aiTheme && overrides?.shape !== 'sweetheart') {
+                  autoNameTable(newId, tables);
+                }
+              }}
+              onClearAssignments={() => setConfirmAction({
+                title: 'Clear all assignments?',
+                message: 'This will unassign every guest from their seat. You can undo this action.',
+                confirmLabel: 'Clear All',
+                action: () => { saveSnapshot(); clearAllAssignments(); },
+              })}
+              onAutoSeat={handleAutoSeat}
+              onAutoLayout={handleAutoLayout}
+              onAutoBalance={handleAutoBalance}
+              onAddVenueElement={(typeId) => { saveSnapshot(); addVenueElement(typeId); }}
+              onApplyTemplate={handleApplyTemplate}
+              onShowStats={() => setShowStats(true)}
+              onShowFindMySeat={() => setShowFindMySeat(true)}
+              onShowVersions={() => setShowVersions(true)}
+              onShowAiNames={() => setShowAiNames(true)}
+              aiThemeActive={!!aiTheme}
+              guestCount={guests.length}
+              assignedCount={assigned.length}
+              unassignedCount={unassigned.length}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              darkMode={darkMode}
+              onToggleDark={() => setDarkMode(!darkMode)}
+              onShare={handleShare}
+              shareUrl={shareUrl}
+            />
           </div>
         </div>
 
         <DragOverlay dropAnimation={null} />
       </DndContext>
+
+      {/* Custom pointer-following drag overlay — bypasses dnd-kit positioning issues */}
+      {activeDragGuest && dragPointer && (
+        <div
+          className="fixed z-[9999] pointer-events-none"
+          style={{
+            left: dragPointer.x,
+            top: dragPointer.y,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          <div className="guest-card flex items-center gap-2 shadow-xl ring-2 ring-teal bg-white w-56">
+            <GripVertical size={14} className="text-gray-400 shrink-0" />
+            <span className="font-medium truncate">{activeDragGuest.name}</span>
+          </div>
+        </div>
+      )}
 
       {selectedTableId && (
         <TableDetailModal
@@ -639,6 +720,42 @@ export default function App() {
           onLoad={handleLoadVersion}
           onDelete={deleteVersion}
           onClose={() => setShowVersions(false)}
+        />
+      )}
+
+      {editingGuestId && (() => {
+        const guest = guests.find((g) => g.id === editingGuestId);
+        if (!guest) return null;
+        return (
+          <GuestDetailModal
+            guest={guest}
+            guests={guests}
+            groups={groups}
+            tables={tables}
+            onUpdate={handleUpdateGuest}
+            onRemove={handleRemoveGuest}
+            onClose={() => setEditingGuestId(null)}
+          />
+        );
+      })()}
+
+      {showAiNames && (
+        <TableNameGenerator
+          tables={tables}
+          onUpdateTable={updateTable}
+          onClose={() => setShowAiNames(false)}
+          savedTheme={aiTheme}
+          onSaveTheme={handleSaveAiTheme}
+        />
+      )}
+
+      {confirmAction && (
+        <ConfirmDialog
+          title={confirmAction.title}
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          onConfirm={() => { confirmAction.action(); setConfirmAction(null); }}
+          onCancel={() => setConfirmAction(null)}
         />
       )}
 

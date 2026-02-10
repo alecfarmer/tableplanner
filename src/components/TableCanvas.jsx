@@ -226,8 +226,8 @@ export default function TableCanvas({
         }}
         style={{
           backgroundImage: gridSnap
-            ? `linear-gradient(to right, rgba(183,196,161,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(183,196,161,0.2) 1px, transparent 1px)`
-            : 'radial-gradient(circle, #d1d5db 1px, transparent 1px)',
+            ? `linear-gradient(to right, rgba(13,148,136,0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(13,148,136,0.12) 1px, transparent 1px)`
+            : 'radial-gradient(circle, #cbd5e1 1px, transparent 1px)',
           backgroundSize: gridSnap
             ? `${GRID_SIZE * zoom}px ${GRID_SIZE * zoom}px`
             : `${24 * zoom}px ${24 * zoom}px`,

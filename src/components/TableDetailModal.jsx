@@ -126,7 +126,7 @@ export default function TableDetailModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h2 className="font-serif text-xl font-semibold text-wine flex items-center gap-2">
-              {isSweetheart && <Heart size={18} className="text-gold" fill="#c9a84c" />}
+              {isSweetheart && <Heart size={18} className="text-gold" fill="#f59e0b" />}
               {table.label}
             </h2>
             <p className="text-sm text-gray-500">
@@ -159,17 +159,17 @@ export default function TableDetailModal({
                 style={{
                   left: 40, top: 30, right: 40, bottom: 30,
                   background: 'linear-gradient(135deg, rgba(201,168,76,0.15), rgba(245,230,224,0.5))',
-                  borderColor: '#c9a84c',
+                  borderColor: '#f59e0b',
                 }}
               >
                 <div className="text-center">
-                  <Heart size={16} className="text-gold mx-auto mb-1" fill="#c9a84c" />
+                  <Heart size={16} className="text-gold mx-auto mb-1" fill="#f59e0b" />
                   <p className="font-serif text-sm font-semibold text-gold-dark">{table.label}</p>
                   <p className="text-[11px] text-gray-500">{assignedCount}/2</p>
                 </div>
               </div>
             ) : table.shape === 'round' ? (
-              <div className="absolute bg-blush/30 border-2 border-blush-dark rounded-full flex items-center justify-center"
+              <div className="absolute bg-teal/10 border-2 border-teal/40 rounded-full flex items-center justify-center"
                 style={{ left: 50, top: 50, right: 50, bottom: 50 }}
               >
                 <div className="text-center">
@@ -178,7 +178,7 @@ export default function TableDetailModal({
                 </div>
               </div>
             ) : (
-              <div className="absolute bg-blush/30 border-2 border-blush-dark rounded-xl flex items-center justify-center"
+              <div className="absolute bg-teal/10 border-2 border-teal/40 rounded-xl flex items-center justify-center"
                 style={{ left: 40, top: 40, right: 40, bottom: 40 }}
               >
                 <div className="text-center">
@@ -218,8 +218,8 @@ export default function TableDetailModal({
                     `}
                     style={{
                       borderColor: guest
-                        ? (group?.color || '#97a880')
-                        : isSwapSource ? '#c9a84c' : undefined,
+                        ? (group?.color || '#0d9488')
+                        : isSwapSource ? '#f59e0b' : undefined,
                       borderLeftWidth: group ? '4px' : undefined,
                       borderLeftColor: group?.color,
                     }}

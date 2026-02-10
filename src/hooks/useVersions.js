@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 
-const STORAGE_KEY = 'wedding-seating-versions';
+const STORAGE_KEY = 'tp-seating-versions';
 
 export function useVersions() {
   const [versions, setVersions] = useState(() => {

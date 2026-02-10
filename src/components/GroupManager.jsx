@@ -24,6 +24,7 @@ export default function GroupManager({
   onClearGuestGroups,
   onClearAllGroups,
   groupColors,
+  embedded = false,
 }) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -76,9 +77,114 @@ export default function GroupManager({
   }
   const ungroupedGuests = guests.filter((g) => !g.groupId);
 
+  const content = (
+    <div className="space-y-2">
+      {/* Action buttons */}
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => setShowCreateForm(!showCreateForm)}
+          className="btn-primary text-xs py-1 px-2 flex items-center gap-1"
+        >
+          <FolderPlus size={12} />
+          New Group
+        </button>
+        <button
+          onClick={handleAutoGroup}
+          className="btn-gold text-xs py-1 px-2 flex items-center gap-1"
+          title="Automatically group guests who share the same last name"
+        >
+          <Wand2 size={12} />
+          Auto-Group
+        </button>
+        {groups.length > 0 && (
+          <button
+            onClick={() => {
+              onClearAllGroups();
+              toast.success('All groups removed');
+            }}
+            className="text-xs py-1 px-2 flex items-center gap-1 text-gray-500 hover:text-red-500 cursor-pointer transition-colors"
+          >
+            <Trash2 size={12} />
+            Remove All
+          </button>
+        )}
+      </div>
+
+      {/* Create form */}
+      {showCreateForm && (
+        <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+          <input
+            type="text"
+            value={newGroupName}
+            onChange={(e) => setNewGroupName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+            placeholder="Group name..."
+            className="input-field text-xs"
+            autoFocus
+          />
+          <div className="flex gap-1 flex-wrap">
+            {groupColors.map((color) => (
+              <button
+                key={color}
+                onClick={() => setSelectedColor(color)}
+                className={`w-5 h-5 rounded-full cursor-pointer transition-transform ${
+                  selectedColor === color ? 'ring-2 ring-offset-1 ring-gray-400 scale-110' : ''
+                }`}
+                style={{ backgroundColor: color }}
+              />
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleCreate} className="btn-primary text-xs py-1 px-3">
+              Create
+            </button>
+            <button
+              onClick={() => setShowCreateForm(false)}
+              className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Group list */}
+      {groups.length === 0 ? (
+        <p className="text-xs text-gray-400 py-2 text-center">
+          No groups yet. Create one or auto-group by last name.
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {groups.map((group) => (
+            <GroupItem
+              key={group.id}
+              group={group}
+              members={guestsByGroup[group.id] || []}
+              ungroupedGuests={ungroupedGuests}
+              isEditing={editingGroupId === group.id}
+              editingName={editingName}
+              onEditingNameChange={setEditingName}
+              onStartEdit={handleStartEdit}
+              onSaveEdit={handleSaveEdit}
+              onCancelEdit={() => setEditingGroupId(null)}
+              onRemove={() => handleRemoveGroup(group)}
+              isAddingMembers={addingToGroupId === group.id}
+              onToggleAddMembers={() =>
+                setAddingToGroupId(addingToGroupId === group.id ? null : group.id)
+              }
+              onAddGuest={(guestId) => onSetGuestGroup(guestId, group.id)}
+              onRemoveGuest={(guestId) => onSetGuestGroup(guestId, null)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  if (embedded) return content;
+
   return (
     <div className="border-t border-gray-100">
-      {/* Section header */}
       <button
         onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-2 w-full px-4 py-2 text-left hover:bg-gray-50 cursor-pointer"
@@ -92,110 +198,7 @@ export default function GroupManager({
           Groups ({groups.length})
         </span>
       </button>
-
-      {expanded && (
-        <div className="px-4 pb-3 space-y-2">
-          {/* Action buttons */}
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => setShowCreateForm(!showCreateForm)}
-              className="btn-primary text-xs py-1 px-2 flex items-center gap-1"
-            >
-              <FolderPlus size={12} />
-              New Group
-            </button>
-            <button
-              onClick={handleAutoGroup}
-              className="btn-gold text-xs py-1 px-2 flex items-center gap-1"
-              title="Automatically group guests who share the same last name"
-            >
-              <Wand2 size={12} />
-              Auto-Group
-            </button>
-            {groups.length > 0 && (
-              <button
-                onClick={() => {
-                  onClearAllGroups();
-                  toast.success('All groups removed');
-                }}
-                className="text-xs py-1 px-2 flex items-center gap-1 text-gray-500 hover:text-red-500 cursor-pointer transition-colors"
-              >
-                <Trash2 size={12} />
-                Remove All
-              </button>
-            )}
-          </div>
-
-          {/* Create form */}
-          {showCreateForm && (
-            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-              <input
-                type="text"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-                placeholder="Group name..."
-                className="input-field text-xs"
-                autoFocus
-              />
-              <div className="flex gap-1 flex-wrap">
-                {groupColors.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => setSelectedColor(color)}
-                    className={`w-5 h-5 rounded-full cursor-pointer transition-transform ${
-                      selectedColor === color ? 'ring-2 ring-offset-1 ring-gray-400 scale-110' : ''
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <button onClick={handleCreate} className="btn-primary text-xs py-1 px-3">
-                  Create
-                </button>
-                <button
-                  onClick={() => setShowCreateForm(false)}
-                  className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Group list */}
-          {groups.length === 0 ? (
-            <p className="text-xs text-gray-400 py-2 text-center">
-              No groups yet. Create one or auto-group by last name.
-            </p>
-          ) : (
-            <div className="space-y-1.5">
-              {groups.map((group) => (
-                <GroupItem
-                  key={group.id}
-                  group={group}
-                  members={guestsByGroup[group.id] || []}
-                  ungroupedGuests={ungroupedGuests}
-                  isEditing={editingGroupId === group.id}
-                  editingName={editingName}
-                  onEditingNameChange={setEditingName}
-                  onStartEdit={handleStartEdit}
-                  onSaveEdit={handleSaveEdit}
-                  onCancelEdit={() => setEditingGroupId(null)}
-                  onRemove={() => handleRemoveGroup(group)}
-                  isAddingMembers={addingToGroupId === group.id}
-                  onToggleAddMembers={() =>
-                    setAddingToGroupId(addingToGroupId === group.id ? null : group.id)
-                  }
-                  onAddGuest={(guestId) => onSetGuestGroup(guestId, group.id)}
-                  onRemoveGuest={(guestId) => onSetGuestGroup(guestId, null)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {expanded && <div className="px-4 pb-3">{content}</div>}
     </div>
   );
 }

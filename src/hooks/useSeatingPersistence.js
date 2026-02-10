@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-const STORAGE_KEY = 'wedding-seating-planner';
+const STORAGE_KEY = 'tp-seating-planner';
 
 export function useSeatingPersistence(
   guests, tables, groups, setGuests, setTables, setGroups,

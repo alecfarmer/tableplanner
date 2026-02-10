@@ -6,12 +6,13 @@ export function useTables(initialTables = []) {
   const [tables, setTables] = useState(initialTables);
 
   const addTable = useCallback((overrides = {}) => {
+    const id = crypto.randomUUID();
     setTables((prev) => {
       const num = prev.length + 1;
       return [
         ...prev,
         {
-          id: crypto.randomUUID(),
+          id,
           label: `Table ${num}`,
           seats: DEFAULT_SEATS,
           shape: 'round',
@@ -23,6 +24,7 @@ export function useTables(initialTables = []) {
         },
       ];
     });
+    return id;
   }, []);
 
   const removeTable = useCallback((tableId) => {

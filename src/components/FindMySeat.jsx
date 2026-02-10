@@ -20,7 +20,7 @@ export default function FindMySeat({ tables, guests, groups = [], onClose }) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-cream rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         {/* Header */}
-        <div className="bg-wine p-6 text-center relative">
+        <div className="bg-gradient-to-r from-teal to-teal-dark p-6 text-center relative">
           <button onClick={onClose} className="absolute top-3 right-3 text-white/70 hover:text-white cursor-pointer">
             <X size={20} />
           </button>
@@ -52,14 +52,14 @@ export default function FindMySeat({ tables, guests, groups = [], onClose }) {
           {results.map((guest) => (
             <div key={guest.id} className="bg-white rounded-xl p-4 mb-3 border border-gray-100 shadow-sm">
               <div className="flex items-start gap-3">
-                <div className="bg-wine/10 rounded-full p-2">
-                  <MapPin size={20} className="text-wine" />
+                <div className="bg-teal/10 rounded-full p-2">
+                  <MapPin size={20} className="text-teal" />
                 </div>
                 <div className="flex-1">
                   <p className="font-serif font-semibold text-lg text-gray-800">{guest.name}</p>
                   {guest.table ? (
                     <div className="mt-1">
-                      <p className="text-wine font-medium">
+                      <p className="text-teal font-medium">
                         {guest.table.label}
                         <span className="text-gray-500 font-normal"> &middot; Seat {(guest.seatIndex ?? 0) + 1}</span>
                       </p>
